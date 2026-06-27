@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS users (
   experience    TEXT,
   hourly_rate   INTEGER,
   work_mode     TEXT,
+  avatar        TEXT,                          -- profile picture filename
   is_primary    INTEGER NOT NULL DEFAULT 0,   -- the one un-demotable seed admin
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -70,6 +71,12 @@ CREATE TABLE IF NOT EXISTS tasks (
   counter_price    INTEGER,            -- manager's adjusted price (if any)
   manager_note     TEXT,               -- manager's explanation of the price
   agreed_price     INTEGER,            -- the price both sides settled on
+  paid             INTEGER NOT NULL DEFAULT 0,   -- 1 once the client has paid
+  paid_at          TEXT,
+  card_last4       TEXT,
+  rating           INTEGER,            -- 1–5 stars the client gave the fixer
+  rating_comment   TEXT,
+  rated_at         TEXT,
   status           TEXT NOT NULL DEFAULT 'submitted',
   manager_id       INTEGER REFERENCES users(id),
   assigned_fixer_id INTEGER REFERENCES users(id),
@@ -85,6 +92,17 @@ CREATE TABLE IF NOT EXISTS task_events (
   text      TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Indexes on the columns we filter / join / sort by most often.
+CREATE INDEX IF NOT EXISTS idx_tasks_status        ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_client        ON tasks(client_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_fixer         ON tasks(assigned_fixer_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_manager       ON tasks(manager_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_created       ON tasks(created_at);
+CREATE INDEX IF NOT EXISTS idx_tasks_rating        ON tasks(assigned_fixer_id, rating);
+CREATE INDEX IF NOT EXISTS idx_events_task         ON task_events(task_id);
+CREATE INDEX IF NOT EXISTS idx_fixer_skills_cat    ON fixer_skills(category);
+CREATE INDEX IF NOT EXISTS idx_users_role          ON users(role);
 `);
 
 /*
@@ -100,10 +118,18 @@ CREATE TABLE IF NOT EXISTS task_events (
   cancelled        -> manager/admin cancelled it
 */
 
-/* Migration: add custom_category to older databases that predate it. */
+/* Migration: add newer columns to databases that predate them. */
 {
   const cols = db.prepare(`PRAGMA table_info(tasks)`).all().map(c => c.name);
   if (!cols.includes('custom_category')) db.exec(`ALTER TABLE tasks ADD COLUMN custom_category TEXT`);
+  if (!cols.includes('paid'))           db.exec(`ALTER TABLE tasks ADD COLUMN paid INTEGER NOT NULL DEFAULT 0`);
+  if (!cols.includes('paid_at'))        db.exec(`ALTER TABLE tasks ADD COLUMN paid_at TEXT`);
+  if (!cols.includes('card_last4'))     db.exec(`ALTER TABLE tasks ADD COLUMN card_last4 TEXT`);
+  if (!cols.includes('rating'))         db.exec(`ALTER TABLE tasks ADD COLUMN rating INTEGER`);
+  if (!cols.includes('rating_comment')) db.exec(`ALTER TABLE tasks ADD COLUMN rating_comment TEXT`);
+  if (!cols.includes('rated_at'))       db.exec(`ALTER TABLE tasks ADD COLUMN rated_at TEXT`);
+  const ucols = db.prepare(`PRAGMA table_info(users)`).all().map(c => c.name);
+  if (!ucols.includes('avatar'))        db.exec(`ALTER TABLE users ADD COLUMN avatar TEXT`);
 }
 
 /* ------------------------------------------------------------------

@@ -59,7 +59,7 @@
   .nav-links a{transition:color .15s;cursor:pointer}
   .nav-links a:hover{color:var(--ink)}
   .nav-cta{display:flex;align-items:center;gap:.7rem;margin-left:auto}
-  .who{display:flex;align-items:baseline;gap:.6rem;font-size:.9rem;font-weight:600;cursor:pointer;transition:opacity .15s}
+  .who{display:flex;align-items:center;gap:.6rem;font-size:.9rem;font-weight:600;cursor:pointer;transition:opacity .15s}
   .who:hover{opacity:.7}
   .who .role-tag{font-family:'Space Mono';font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;background:var(--violet-soft);color:var(--violet-deep);padding:.2rem .5rem;border-radius:var(--r-pill)}
 
@@ -264,6 +264,7 @@
   .input.invalid,textarea.invalid,select.invalid{border-color:var(--bad);box-shadow:0 0 0 3px var(--bad-soft)}
   .field-err{display:none;color:var(--bad);font-size:.8rem;font-weight:600;margin-top:.35rem}
   .field-err.show{display:block}
+  .field-hint{display:block;font-size:.84rem;color:var(--muted);margin-top:.35rem}
   .qchips{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:.5rem}
   .upload{border:2px dashed var(--silver);border-radius:var(--r-sm);padding:.9rem 1rem;text-align:center;color:var(--muted);transition:all .18s;cursor:pointer;background:var(--bg-soft);font-size:.92rem}
   .upload:hover{border-color:var(--violet);background:var(--violet-soft);color:var(--violet-deep)}
@@ -328,6 +329,50 @@
   .price{font-family:'Bricolage Grotesque';font-weight:800;font-size:1.3rem}
   .price.strike{text-decoration:line-through;color:var(--muted);font-size:1rem;font-weight:600}
   .card-actions{display:flex;gap:.55rem;flex-wrap:wrap}
+  .paid-tag{display:inline-flex;align-items:center;gap:.35rem;width:max-content;font-weight:700;font-size:.82rem;color:var(--ok);background:var(--ok-soft);padding:.32rem .7rem;border-radius:var(--r-pill)}
+  /* ratings */
+  .rate{display:flex;flex-direction:column;gap:.5rem;border-top:1px dashed var(--line);padding-top:.7rem}
+  .rate-lab{font-weight:600;font-size:.9rem}
+  .stars{display:inline-flex;gap:.1rem}
+  .stars .star{font-size:1.5rem;line-height:1;color:var(--silver);background:none;border:none;cursor:pointer;padding:0 .08rem;transition:color .12s,transform .12s}
+  .stars .star:hover{transform:scale(1.12)}
+  .stars .star.on{color:#F5B301}
+  .rate-comment{font-size:.92rem}
+  .rated{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;font-size:.88rem;color:var(--muted)}
+  .stars-ro{letter-spacing:.04em;font-size:1rem}
+  .star-ro{color:var(--silver)}
+  .star-ro.on{color:#F5B301}
+  .rating-avg{color:#E0A800;font-weight:700}
+  /* reviews page */
+  #view-reviews .page-body{max-width:1040px}
+  .reviews-head{text-align:center;margin-bottom:2rem}
+  .reviews-summary{display:inline-flex;align-items:center;gap:.5rem;font-size:1.15rem;margin-top:.7rem}
+  .reviews-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem}
+  .review-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:1.3rem;display:flex;flex-direction:column;gap:.6rem}
+  .review-text{font-size:.98rem;line-height:1.6;color:var(--ink)}
+  .review-top{display:flex;align-items:center;gap:.65rem}
+  .review-top .stars-ro{margin-left:auto;flex-shrink:0}
+  .review-who{display:flex;flex-direction:column;line-height:1.3;min-width:0}
+  .review-who b{font-size:.92rem;color:var(--ink)}
+  .review-sub{font-size:.82rem;color:var(--muted)}
+  .review-fixed{display:flex;align-items:center;gap:.4rem;font-size:.84rem;color:var(--muted)}
+  .review-fixed b{color:var(--ink)}
+  .review-fixed svg{width:15px;height:15px;color:var(--ok);flex-shrink:0}
+  .muted{color:var(--muted)}
+  /* avatars */
+  .avatar{border-radius:50%;object-fit:cover;background:var(--violet-soft);color:var(--violet-deep);font-weight:700;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;text-transform:uppercase;vertical-align:middle}
+  .avatar-lg{width:84px;height:84px;font-size:1.9rem}
+  .avatar-drop{cursor:pointer;display:inline-block;line-height:0;border-radius:50%;transition:opacity .15s}
+  .avatar-drop:hover{opacity:.85}
+  .avatar-drop .avatar-fallback{border:2px dashed var(--silver)}
+  .avatar-drop .avatar-fallback svg{width:32px;height:32px;color:var(--violet-deep)}
+  .avatar-pick{display:flex;align-items:center;justify-content:center;gap:1rem;margin-bottom:1.3rem}
+  .avatar-pick-text{display:flex;flex-direction:column;gap:.15rem}
+  .avatar-pick-text strong{font-size:.95rem}
+  .avatar-pick-text span{font-size:.82rem;color:var(--muted)}
+  .cell-user{display:inline-flex;align-items:center;gap:.55rem}
+  .review-meta{display:flex;align-items:center;gap:.65rem}
+  .who .avatar{margin-right:.1rem}
   .note-box{background:var(--warn-soft);border:1px solid #F0E0B8;border-radius:var(--r-sm);padding:.7rem .9rem;font-size:.9rem;color:#7A5B0B}
   .note-box b{color:#5C4408}
   .events{border-top:1px dashed var(--line);padding-top:.7rem;margin-top:.2rem;display:flex;flex-direction:column;gap:.45rem;max-height:0;overflow:hidden;transition:max-height .3s ease}
@@ -403,6 +448,7 @@
     <nav class="nav-links" aria-label="Primary">
       <a data-go="home" data-hash="how">How it works</a>
       <a data-go="home" data-hash="cats">Common Problems</a>
+      <a data-go="reviews">Reviews</a>
       <a data-go="about">About</a>
     </nav>
     <div class="nav-cta" id="nav-cta"><!-- filled by app.js --></div>
@@ -556,6 +602,14 @@
       <div style="margin-top:.7rem"></div>
       <div class="form-error" id="rc-error"></div>
       <form id="rc-form" novalidate>
+        <div class="avatar-pick">
+          <label class="avatar-drop">
+            <img id="rc-avatar-preview" class="avatar avatar-lg" style="display:none" alt="">
+            <span id="rc-avatar-ph" class="avatar avatar-lg avatar-fallback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            <input type="file" id="rc-avatar-input" accept="image/*" hidden>
+          </label>
+          <div class="avatar-pick-text"><strong>Profile photo</strong><span>Optional — click to add</span></div>
+        </div>
         <label class="field"><span class="lab">Your name</span><input class="input" name="name" placeholder="Jordan Smith"></label>
         <label class="field"><span class="lab">Email</span><input class="input" name="email" type="email" placeholder="you@email.com"></label>
         <label class="field"><span class="lab">Phone</span><input class="input" name="phone" type="tel" placeholder="+1 555 0100"></label>
@@ -563,6 +617,7 @@
           <label class="field"><span class="lab">Choose a password</span><input class="input" name="password" type="password" placeholder="••••••••"></label>
           <label class="field"><span class="lab">Repeat password</span><input class="input" name="password2" type="password" placeholder="••••••••"></label>
         </div>
+        <span class="field-hint" style="margin-top:-.35rem;margin-bottom:.4rem">At least 8 characters, 1 number, 1 capital letter</span>
         <button class="btn btn-primary btn-block btn-lg" type="submit">Create account</button>
       </form>
       <p class="alt-line">Already have an account? <a data-go="login">Log in</a></p>
@@ -588,6 +643,14 @@
           <h2 class="flow-title">Join as a fixer</h2>
           <p class="flow-sub">Tell us what you're great at. You can change all of this later.</p>
           <div style="margin-top:.7rem"></div>
+          <div class="avatar-pick">
+            <label class="avatar-drop">
+              <img id="rf-avatar-preview" class="avatar avatar-lg" style="display:none" alt="">
+              <span id="rf-avatar-ph" class="avatar avatar-lg avatar-fallback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+              <input type="file" id="rf-avatar-input" accept="image/*" hidden>
+            </label>
+            <div class="avatar-pick-text"><strong>Profile photo</strong><span>Optional — click to add</span></div>
+          </div>
           <div class="two">
             <label class="field"><span class="lab">Full name</span><input class="input" name="name" placeholder="Alex Rivera"></label>
             <label class="field"><span class="lab">Email</span><input class="input" name="email" type="email" placeholder="alex@email.com"></label>
@@ -616,6 +679,7 @@
             <label class="field"><span class="lab">Choose a password</span><input class="input" name="password" type="password" placeholder="••••••••"></label>
             <label class="field"><span class="lab">Repeat password</span><input class="input" name="password2" type="password" placeholder="••••••••"></label>
           </div>
+          <span class="field-hint" style="margin-top:-.35rem;margin-bottom:.4rem">At least 8 characters, 1 number, 1 capital letter</span>
           <div class="flow-actions">
             <button class="btn btn-ghost" type="button" data-pprev="1">Back</button>
             <button class="btn btn-primary" type="submit">Create my profile</button>
@@ -667,7 +731,7 @@
         <h2 class="flow-title">Your budget &amp; timing</h2>
         <p class="flow-sub">Name a price you have in mind. A manager will confirm it or suggest a fair one — and always explain why.</p>
         <div style="margin-top:.7rem"></div>
-        <label class="field"><span class="lab">What would you like to pay? <span class="opt">USD — optional</span></span><input class="input" id="c-price" type="number" min="0" placeholder="e.g. 40"></label>
+        <label class="field"><span class="lab">What would you like to pay? <span class="opt">USD — optional, min $10</span></span><input class="input" id="c-price" type="number" min="10" placeholder="e.g. 40"></label>
         <label class="field"><span class="lab">How soon do you need help?</span>
           <select class="input" id="c-when"><option>As soon as possible</option><option>Within a few days</option><option>No rush — whenever</option></select></label>
         <div class="flow-actions">
@@ -701,6 +765,14 @@
   <div class="flow"><div class="wrap">
     <button class="back" data-go="dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back to dashboard</button>
     <div class="flow-card" id="profile-root"><!-- filled by app.js --></div>
+  </div></div>
+</main>
+
+<!-- ================= REVIEWS ================= -->
+<main id="view-reviews" class="view">
+  <div class="page"><div class="wrap">
+    <button class="back" data-go="home"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back home</button>
+    <div class="page-body" id="reviews-root"><!-- filled by app.js --></div>
   </div></div>
 </main>
 
@@ -766,7 +838,7 @@
         <p>The simplest way to get a real IT problem solved by a real person.</p>
       </div>
       <div class="foot-links">
-        <div class="foot-col"><h4>Get help</h4><a data-go="post">Post a problem</a><a data-go="home" data-hash="cats">Common Problems</a><a data-go="home" data-hash="how">How it works</a></div>
+        <div class="foot-col"><h4>Get help</h4><a data-go="post">Post a problem</a><a data-go="home" data-hash="cats">Common Problems</a><a data-go="home" data-hash="how">How it works</a><a data-go="reviews">Reviews</a></div>
         <div class="foot-col"><h4>For fixers</h4><a data-go="registerFixer">Become a fixer</a><a data-go="login">Log in</a></div>
         <div class="foot-col"><h4>Company</h4><a data-go="about">About</a><a data-go="about" data-hash="trust-sec">Trust &amp; safety</a><a data-go="about" data-hash="contact-sec">Contact</a></div>
       </div>

@@ -63,9 +63,14 @@ const Q = {
   allUsers: db.prepare('SELECT * FROM users ORDER BY created_at ASC'),
   setRole:  db.prepare('UPDATE users SET role = ? WHERE id = ?'),
   countAdmins: db.prepare(`SELECT COUNT(*) AS n FROM users WHERE role = 'admin'`),
+  fixerRating: db.prepare(`SELECT AVG(rating) AS avg, COUNT(rating) AS n FROM tasks WHERE assigned_fixer_id = ? AND rating IS NOT NULL`),
 };
 
 /* ---------- helpers ---------- */
+function ratingFor(fixerId) {
+  const r = Q.fixerRating.get(fixerId);
+  return { avg: r.avg ? Math.round(r.avg * 10) / 10 : 0, count: r.n };
+}
 function publicUser(u) {
   if (!u) return null;
   const skills = u.role === 'fixer' ? Q.skillsFor.all(u.id).map(r => r.category) : undefined;
@@ -74,6 +79,8 @@ function publicUser(u) {
     bio: u.bio || null, experience: u.experience || null,
     hourly_rate: u.hourly_rate || null, work_mode: u.work_mode || null,
     is_primary: !!u.is_primary, skills,
+    avatar: u.avatar ? `/uploads/${path.basename(u.avatar)}` : null,
+    rating: u.role === 'fixer' ? ratingFor(u.id) : undefined,
   };
 }
 
@@ -93,6 +100,8 @@ function taskView(t, viewer) {
     counter_price: t.counter_price,
     manager_note: t.manager_note,
     agreed_price: t.agreed_price,
+    paid: !!t.paid, paid_at: t.paid_at || null, card_last4: t.card_last4 || null,
+    rating: t.rating || null, rating_comment: t.rating_comment || null,
     status: t.status,
     created_at: t.created_at, updated_at: t.updated_at,
     client: { id: client.id, name: client.name },
@@ -133,38 +142,86 @@ const requireRole = (...roles) => (req, res, next) =>
 ================================================================== */
 app.get('/api/categories', (req, res) => res.json(CATEGORIES));
 
-app.post('/api/auth/register/client', (req, res) => {
+// Public reviews feed (no login) — ratings clients left for fixers.
+app.get('/api/reviews', (req, res) => {
+  const rows = db.prepare(`
+    SELECT t.rating, t.rating_comment, t.rated_at, t.category, t.custom_category,
+           f.name AS fixer, f.avatar AS fixer_avatar,
+           c.name AS reviewer, c.avatar AS reviewer_avatar
+    FROM tasks t
+    JOIN users f ON f.id = t.assigned_fixer_id
+    JOIN users c ON c.id = t.client_id
+    WHERE t.rating IS NOT NULL
+    ORDER BY t.rated_at DESC`).all();
+  const url = (a) => a ? `/uploads/${path.basename(a)}` : null;
+  const reviews = rows.map(r => ({
+    reviewer: r.reviewer,
+    reviewerAvatar: url(r.reviewer_avatar),
+    fixer: r.fixer,
+    fixerAvatar: url(r.fixer_avatar),
+    rating: r.rating,
+    comment: r.rating_comment || null,
+    categoryLabel: r.custom_category ? r.custom_category : labelFor(r.category),
+    at: r.rated_at,
+  }));
+  const count = reviews.length;
+  const avg = count ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / count) * 10) / 10 : 0;
+  res.json({ reviews, summary: { count, avg } });
+});
+
+const setAvatar = db.prepare('UPDATE users SET avatar=? WHERE id=?');
+// FormData arrays arrive as JSON strings.
+const parseArr = (v) => { try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch { return Array.isArray(v) ? v : []; } };
+// Password policy: 8+ chars, at least one number and one capital letter.
+function passwordError(pw) {
+  pw = pw || '';
+  if (pw.length < 8) return 'Password must be at least 8 characters.';
+  if (!/[0-9]/.test(pw)) return 'Password must include at least 1 number.';
+  if (!/[A-Z]/.test(pw)) return 'Password must include at least 1 capital letter.';
+  return null;
+}
+
+app.post('/api/auth/register/client', upload.single('avatar'), (req, res) => {
   const { name, email, phone, password } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password are required.' });
-  if (Q.userByEmail.get(email)) return res.status(409).json({ error: 'That email is already registered.' });
+  const pe = passwordError(password); if (pe) return res.status(400).json({ error: pe });
+  if (Q.userByEmail.get(email.toLowerCase().trim())) return res.status(409).json({ error: 'That email is already registered.' });
   const r = Q.insUser.run('client', name.trim(), email.toLowerCase().trim(), phone || null,
     bcrypt.hashSync(password, 10), null, null, null, null);
+  if (req.file) setAvatar.run(req.file.filename, r.lastInsertRowid);
   const user = Q.userById.get(r.lastInsertRowid);
   setAuthCookie(res, user);
   res.json({ user: publicUser(user) });
 });
 
-app.post('/api/auth/register/fixer', (req, res) => {
-  const { name, email, password, bio, experience, hourly_rate, work_mode, skills, custom_skills } = req.body || {};
+app.post('/api/auth/register/fixer', upload.single('avatar'), (req, res) => {
+  const { name, email, password, bio, experience, work_mode } = req.body || {};
   if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password are required.' });
+  const pe = passwordError(password); if (pe) return res.status(400).json({ error: pe });
   // Built-in qualifications (category keys) + any free-text specialities they typed.
-  const keys = Array.isArray(skills) ? skills.filter(s => CATEGORY_KEYS.has(s)) : [];
-  const customs = (Array.isArray(custom_skills) ? custom_skills : [])
-    .map(s => String(s || '').trim().slice(0, 40)).filter(Boolean);
+  const keys = parseArr((req.body || {}).skills).filter(s => CATEGORY_KEYS.has(s));
+  const customs = parseArr((req.body || {}).custom_skills).map(s => String(s || '').trim().slice(0, 40)).filter(Boolean);
   if (keys.length === 0 && customs.length === 0)
     return res.status(400).json({ error: 'Pick or type at least one thing you can fix.' });
-  if (Q.userByEmail.get(email)) return res.status(409).json({ error: 'That email is already registered.' });
+  if (Q.userByEmail.get(email.toLowerCase().trim())) return res.status(409).json({ error: 'That email is already registered.' });
   const finalSkills = new Set(keys);
   customs.forEach(c => finalSkills.add(c));
   // Custom specialities also join the "Something else" pool so they get matched custom problems.
   if (customs.length) finalSkills.add('other');
   const r = Q.insUser.run('fixer', name.trim(), email.toLowerCase().trim(), null,
-    bcrypt.hashSync(password, 10), bio || null, experience || null,
-    hourly_rate ? parseInt(hourly_rate, 10) : null, work_mode || null);
+    bcrypt.hashSync(password, 10), bio || null, experience || null, null, work_mode || null);
+  if (req.file) setAvatar.run(req.file.filename, r.lastInsertRowid);
   [...finalSkills].forEach(s => Q.insSkill.run(r.lastInsertRowid, s));
   const user = Q.userById.get(r.lastInsertRowid);
   setAuthCookie(res, user);
   res.json({ user: publicUser(user) });
+});
+
+// Change your profile picture.
+app.post('/api/profile/avatar', auth, upload.single('avatar'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Please choose an image.' });
+  setAvatar.run(req.file.filename, req.user.id);
+  res.json({ user: publicUser(Q.userById.get(req.user.id)) });
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -204,7 +261,7 @@ app.post('/api/profile', auth, (req, res) => {
   // Password (only when changing)
   let password_hash = u.password_hash;
   if (b.newPassword) {
-    if (String(b.newPassword).length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    const npe = passwordError(b.newPassword); if (npe) return res.status(400).json({ error: npe });
     if (!bcrypt.compareSync(b.currentPassword || '', u.password_hash))
       return res.status(400).json({ error: 'Your current password is incorrect.' });
     password_hash = bcrypt.hashSync(b.newPassword, 10);
@@ -246,6 +303,9 @@ app.post('/api/tasks', auth, requireRole('client'), upload.array('photos', 4), (
   const { category, title, description, urgency, proposed_price } = req.body || {};
   if (!category || !CATEGORY_KEYS.has(category)) return res.status(400).json({ error: 'Choose a valid problem type.' });
   if (!description || description.trim().length < 5) return res.status(400).json({ error: 'Please describe the problem.' });
+  // Minimum offer is $10 (price is optional, but if given it must be at least 10).
+  const priceNum = proposed_price ? parseInt(proposed_price, 10) : null;
+  if (priceNum != null && priceNum < 10) return res.status(400).json({ error: 'The lowest you can offer is $10.' });
   // Free-text problem type when the client picked "Something else".
   let customCategory = null;
   if (category === 'other') {
@@ -258,7 +318,7 @@ app.post('/api/tasks', auth, requireRole('client'), upload.array('photos', 4), (
     description.trim(),
     (req.files && req.files.length) ? req.files.map(f => f.filename).join(',') : null,
     urgency || 'As soon as possible',
-    proposed_price ? parseInt(proposed_price, 10) : null,
+    priceNum,
   );
   event(r.lastInsertRowid, req.user.id,
     `Problem posted${proposed_price ? ` with a suggested budget of $${parseInt(proposed_price,10)}` : ''}. Waiting for a manager to review.`);
@@ -293,6 +353,38 @@ app.post('/api/tasks/:id/confirm', auth, requireRole('client'), (req, res) => {
   if (t.status !== 'work_done') return res.status(400).json({ error: 'This task is not awaiting confirmation.' });
   db.prepare(`UPDATE tasks SET status='completed', updated_at=datetime('now') WHERE id=?`).run(t.id);
   event(t.id, req.user.id, 'Client confirmed the problem is fixed. ✅');
+  res.json({ task: taskView(Q.taskById.get(t.id), req.user) });
+});
+
+// Client pays for a completed job (simulated — no real charge, no card stored).
+app.post('/api/tasks/:id/pay', auth, requireRole('client'), (req, res) => {
+  const t = Q.taskById.get(+req.params.id);
+  if (!t || t.client_id !== req.user.id) return res.status(404).json({ error: 'Task not found.' });
+  if (t.status !== 'completed') return res.status(400).json({ error: 'You can only pay once the job is completed.' });
+  if (t.paid) return res.status(400).json({ error: 'This job is already paid.' });
+  const amount = t.agreed_price != null ? t.agreed_price : t.proposed_price;
+  // We never store the card — only the last 4 digits for the receipt line.
+  const last4 = String((req.body || {}).last4 || '').replace(/\D/g, '').slice(-4) || null;
+  db.prepare(`UPDATE tasks SET paid=1, paid_at=datetime('now'), card_last4=?, updated_at=datetime('now') WHERE id=?`)
+    .run(last4, t.id);
+  event(t.id, req.user.id, `Client paid $${amount}${last4 ? ` (card ending ${last4})` : ''}. 💳`);
+  res.json({ task: taskView(Q.taskById.get(t.id), req.user) });
+});
+
+// Client rates the fixer who did a completed job (1–5 stars, optional comment).
+app.post('/api/tasks/:id/rate', auth, requireRole('client'), (req, res) => {
+  const t = Q.taskById.get(+req.params.id);
+  if (!t || t.client_id !== req.user.id) return res.status(404).json({ error: 'Task not found.' });
+  if (t.status !== 'completed') return res.status(400).json({ error: 'You can only rate a completed job.' });
+  if (!t.assigned_fixer_id) return res.status(400).json({ error: 'There is no fixer to rate.' });
+  if (t.rating) return res.status(400).json({ error: 'You have already rated this job.' });
+  const rating = parseInt((req.body || {}).rating, 10);
+  if (!(rating >= 1 && rating <= 5)) return res.status(400).json({ error: 'Pick a rating from 1 to 5 stars.' });
+  const comment = ((req.body || {}).comment || '').trim().slice(0, 300) || null;
+  db.prepare(`UPDATE tasks SET rating=?, rating_comment=?, rated_at=datetime('now'), updated_at=datetime('now') WHERE id=?`)
+    .run(rating, comment, t.id);
+  const fixer = Q.userById.get(t.assigned_fixer_id);
+  event(t.id, req.user.id, `Client rated ${fixer ? fixer.name : 'the fixer'} ${'★'.repeat(rating)} (${rating}/5)${comment ? `: ${comment}` : ''}.`);
   res.json({ task: taskView(Q.taskById.get(t.id), req.user) });
 });
 
