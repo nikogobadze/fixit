@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FixIT — Behind every glitch, there's someone who can fix it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#ffffff;--bg-soft:#F8F7FB;--ink:#1B1525;--muted:#6E6878;--line:#E7E4EE;
+    --silver:#C9CDD6;--silver-soft:#EEF0F4;--violet:#7C3AED;--violet-deep:#5F22C7;
+    --violet-soft:#F2ECFE;--violet-100:#E8DBFD;
+    --grad:linear-gradient(135deg,#7C3AED 0%,#9D6BFF 100%);
+    --sheen:linear-gradient(135deg,#F6F7FA 0%,#E0E3EA 100%);
+    --shadow-sm:0 1px 2px rgba(34,20,60,.06);--shadow:0 12px 40px rgba(60,32,120,.10);
+    --shadow-lg:0 28px 70px rgba(60,32,120,.16);
+    --ok:#1F9D6B;--ok-soft:#E4F6EE;--warn:#B8860B;--warn-soft:#FBF3DD;
+    --info:#2563EB;--info-soft:#E5EDFF;--bad:#C2410C;--bad-soft:#FCEAE0;
+    --r:18px;--r-sm:12px;--r-pill:999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .mono{font-family:'Space Mono',monospace}
+  h1,h2,h3{font-family:'Bricolage Grotesque',sans-serif;line-height:1.05;letter-spacing:-.02em;font-weight:700}
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  img{max-width:100%;display:block}
+  .wrap{width:min(1120px,92vw);margin:0 auto}
+
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;gap:.5rem;font-weight:600;font-size:.97rem;line-height:1.2;padding:.79rem 1.4rem .91rem;border-radius:var(--r-pill);transition:transform .18s ease,box-shadow .18s ease,background .18s ease;border:1px solid transparent;white-space:nowrap;cursor:pointer}
+  #logout-btn{justify-content:center}
+  [data-go]{cursor:pointer}
+  .btn:focus-visible{outline:3px solid var(--violet-100);outline-offset:2px}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
+  .btn-primary{background:var(--grad);color:#fff;box-shadow:0 8px 22px rgba(124,58,237,.32)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(124,58,237,.40)}
+  .btn-ghost{background:#fff;color:var(--ink);border-color:var(--line);box-shadow:var(--shadow-sm)}
+  .btn-ghost:hover{border-color:var(--silver);transform:translateY(-2px)}
+  .btn-soft{background:var(--violet-soft);color:var(--violet-deep)}
+  .btn-soft:hover{background:var(--violet-100)}
+  .btn-danger{background:var(--bad-soft);color:var(--bad)}
+  .btn-ok{background:var(--ok);color:#fff}
+  .btn-lg{padding:.99rem 1.8rem 1.11rem;font-size:1.05rem}
+  .btn-sm{padding:.44rem .9rem .56rem;font-size:.86rem}
+  .btn-block{width:100%;justify-content:center}
+
+  /* nav */
+  header.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .nav-inner{position:relative;display:flex;align-items:center;justify-content:space-between;height:70px}
+  .logo{display:flex;align-items:center;gap:.55rem;font-family:'Bricolage Grotesque';font-weight:800;font-size:1.32rem;letter-spacing:-.03em;cursor:pointer}
+  .logo .mark{width:34px;height:34px;border-radius:10px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(124,58,237,.4)}
+  .logo .mark svg{width:26px;height:26px;display:block;transform:translate(0.5px,-0.5px)}
+  .logo b{color:var(--violet)}
+  .nav-links{position:absolute;left:29%;transform:translateX(-50%);display:flex;align-items:center;gap:1.6rem;font-weight:500;font-size:.95rem;color:var(--muted)}
+  .nav-links a{transition:color .15s;cursor:pointer}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-cta{display:flex;align-items:center;gap:.7rem;margin-left:auto}
+  .who{display:flex;align-items:baseline;gap:.6rem;font-size:.9rem;font-weight:600;cursor:pointer;transition:opacity .15s}
+  .who:hover{opacity:.7}
+  .who .role-tag{font-family:'Space Mono';font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;background:var(--violet-soft);color:var(--violet-deep);padding:.2rem .5rem;border-radius:var(--r-pill)}
+
+  /* views */
+  .view{display:none;animation:fade .4s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* hero */
+  .hero{position:relative;overflow:hidden;padding:3rem 0 4.5rem}
+  .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 60% at 82% 8%,rgba(157,107,255,.18),transparent 60%),radial-gradient(50% 50% at 8% 92%,rgba(201,205,214,.30),transparent 60%);z-index:-1}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:3.5rem;align-items:center}
+  .eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-deep);background:var(--violet-soft);padding:.4rem .8rem;border-radius:var(--r-pill);font-weight:700;margin-bottom:1.4rem}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--violet);box-shadow:0 0 0 4px rgba(124,58,237,.18)}
+  .hero h1{font-size:clamp(2.5rem,5vw,3.9rem);font-weight:800}
+  .hero h1 .hl{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lede{font-size:1.18rem;color:var(--muted);margin:1.4rem 0 .6rem;max-width:34ch}
+  .reassure{display:inline-flex;align-items:center;gap:.5rem;color:var(--ink);font-weight:600;font-size:.92rem;margin:.4rem 0 2rem}
+  .reassure svg{width:18px;height:18px;color:var(--violet)}
+  .hero-cta{display:flex;gap:.9rem;flex-wrap:wrap}
+  .hero-note{margin-top:1.5rem;font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:.5rem}
+  .avatars{display:flex}
+  .avatars span{width:26px;height:26px;border-radius:50%;border:2px solid #fff;margin-left:-8px;background:var(--sheen)}
+  .avatars span:first-child{margin-left:0}
+  .preview{position:relative;min-width:0}
+  .pcard{background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow-lg);padding:1.5rem;transform:rotate(-1.4deg)}
+  .pcard .phead{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+  .pcard .ptitle{font-family:'Bricolage Grotesque';font-weight:700;font-size:1.05rem}
+  .pcard .pstep{font-family:'Space Mono';font-size:.72rem;color:var(--violet-deep);background:var(--violet-soft);padding:.25rem .6rem;border-radius:var(--r-pill)}
+  .chiprow{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
+  .chiprow.marquee{flex-wrap:nowrap;overflow:hidden;width:100%;min-width:0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+  .chip-track{display:flex;gap:.5rem;width:max-content;animation:chipscroll 30s linear infinite;will-change:transform;backface-visibility:hidden}
+  .chiprow.marquee:hover .chip-track{animation-play-state:paused}
+  .chip-track .chip{flex:0 0 auto}
+  @keyframes chipscroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+  .chip{font-size:.82rem;font-weight:600;padding:.5rem .85rem;border-radius:var(--r-pill);border:1px solid var(--line);background:#fff;color:var(--ink);transition:all .15s;display:inline-flex;align-items:center;gap:.4rem;cursor:pointer}
+  .chip:hover{border-color:var(--violet);color:var(--violet-deep);background:var(--violet-soft);transform:translateY(-1px)}
+  .chip.on{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(124,58,237,.3)}
+  .pcard .fakefield{background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--r-sm);padding:.8rem .9rem;color:var(--muted);font-size:.9rem;margin-bottom:.8rem}
+  .pcard .pbar{display:flex;gap:.6rem;align-items:center}
+  .pcard .pbtn{flex:1;background:var(--grad);color:#fff;text-align:center;font-weight:600;line-height:1.2;padding:.69rem .75rem .81rem;border-radius:var(--r-sm);cursor:pointer;transition:transform .15s,box-shadow .15s}
+  .pcard .pbtn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,58,237,.35)}
+  .pcard .picon{width:42px;height:42px;border-radius:var(--r-sm);border:1px dashed var(--silver);display:grid;place-items:center;color:var(--muted)}
+  .float-tag{position:absolute;background:#fff;border:1px solid var(--line);border-radius:var(--r-pill);padding:.5rem .9rem;font-size:.8rem;font-weight:600;box-shadow:var(--shadow);display:flex;align-items:center;gap:.45rem}
+  .float-tag svg{width:16px;height:16px;color:var(--violet)}
+  .ft1{top:-42px;left:-22px;transform:rotate(-4deg)}
+  .ft2{bottom:-42px;right:-14px}
+
+  /* sections */
+  .section{padding:5rem 0}
+  .section.soft{background:var(--bg-soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .sec-head{text-align:center;max-width:620px;margin:0 auto 3rem}
+  .sec-head .eyebrow{margin-bottom:1rem}
+  .sec-head h2{font-size:clamp(1.9rem,3.5vw,2.6rem)}
+  .sec-head p{color:var(--muted);font-size:1.08rem;margin-top:.8rem}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+  .step{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:2rem 1.6rem;position:relative;transition:transform .2s,box-shadow .2s}
+  .step:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+  .step .num{font-family:'Space Mono';font-weight:700;font-size:.85rem;color:var(--violet);letter-spacing:.05em}
+  .step .ico{width:48px;height:48px;border-radius:14px;background:var(--violet-soft);display:grid;place-items:center;color:var(--violet-deep);margin:1rem 0 1.1rem}
+  .step .ico svg{width:24px;height:24px}
+  .step h3{font-size:1.22rem;margin-bottom:.5rem}
+  .step p{color:var(--muted);font-size:.96rem}
+  .step .line{position:absolute;top:3.4rem;left:calc(100% + .2rem);width:1.1rem;border-top:2px dashed var(--silver)}
+  .steps .step:last-child .line,.steps .step:nth-child(3n) .line{display:none}
+  .cats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+  .cat{display:flex;align-items:center;gap:.8rem;background:#fff;border:1px solid var(--line);border-radius:var(--r-sm);padding:1rem 1.1rem;font-weight:600;font-size:.97rem;transition:all .18s;text-align:left;cursor:pointer}
+  .cat:hover{border-color:var(--violet);background:var(--violet-soft);transform:translateY(-3px);box-shadow:var(--shadow)}
+  .cat .cico{width:38px;height:38px;border-radius:10px;background:var(--sheen);display:grid;place-items:center;color:var(--violet-deep);flex-shrink:0;font-size:1.1rem}
+  .home-other{max-width:640px;margin:1.8rem auto 0;text-align:center}
+  .home-other-lab{display:block;font-weight:600;color:var(--muted);font-size:.92rem;margin-bottom:.7rem}
+  .home-other-row{display:flex;gap:.6rem}
+  .home-other-row .input{flex:1;background:#fff}
+  .home-other-row .btn{flex-shrink:0}
+  @media(max-width:600px){.home-other-row{flex-direction:column}}
+  .fixer-band{background:linear-gradient(135deg,#1B1525 0%,#3A2566 100%);color:#fff;border-radius:28px;padding:3.2rem;display:grid;grid-template-columns:1.3fr 1fr;gap:2rem;align-items:center;position:relative;overflow:hidden}
+  .fixer-band::after{content:"";position:absolute;width:280px;height:280px;right:-60px;top:-60px;background:radial-gradient(circle,rgba(157,107,255,.5),transparent 70%)}
+  .fixer-band .eyebrow{background:rgba(255,255,255,.12);color:#D9C8FF}
+  .fixer-band h2{font-size:clamp(1.7rem,3vw,2.3rem);position:relative}
+  .fixer-band p{color:#C9C2D8;margin:.9rem 0 0;position:relative}
+  .fixer-perks{display:flex;flex-direction:column;gap:.9rem;position:relative}
+  .perk{display:flex;align-items:center;gap:.7rem;font-weight:500}
+  .perk svg{width:20px;height:20px;color:#B794FF;flex-shrink:0}
+  .fixer-band .actions{margin-top:1.6rem;position:relative}
+
+  /* content pages (About / Trust / Contact) */
+  .page{padding:1rem 0 5rem;min-height:70vh}
+  .page .wrap{position:relative}
+  .page .back{position:absolute;top:0;left:0;z-index:2}
+  .page-body{max-width:760px;margin:0 auto}
+  #view-about .input{padding:.55rem 1rem .69rem}
+  #view-about .field .lab{margin-bottom:.35rem}
+  #view-about .field{margin-bottom:.7rem}
+  #view-about textarea{min-height:96px}
+  /* Profile page: same compact design as the registration / post pages */
+  #view-profile .wrap{position:relative}
+  #view-profile .back{position:absolute;top:0;left:0;z-index:2}
+  #view-profile .flow{padding:1rem 0 1.25rem;min-height:0}
+  #view-profile .flow-card{max-width:620px;margin-top:0;padding:1.6rem 2.4rem}
+  #view-profile .flow-title{font-size:1.55rem}
+  #view-profile .flow-sub{margin-top:.4rem}
+  #view-profile .input{padding:.55rem 1rem .69rem}
+  #view-profile .field .lab{margin-bottom:.35rem}
+  #view-profile .field{margin-bottom:.7rem}
+  #view-profile textarea{min-height:84px}
+  #view-profile #profile-form .btn-block{padding-top:.66rem;padding-bottom:.78rem;margin-top:.8rem}
+  .profile-sep{border:none;border-top:1px solid var(--line);margin:1.3rem 0}
+  .profile-sec-title{font-size:1.05rem;font-weight:700;margin-bottom:.9rem}
+  .page-title{font-size:clamp(2rem,4vw,2.8rem);margin:1.2rem 0 .6rem}
+  .page-lead{font-size:1.15rem;color:var(--muted);margin-bottom:1.8rem;max-width:62ch}
+  .page h2{font-size:1.35rem;margin:2rem 0 .7rem;scroll-margin-top:90px}
+  .page p{color:var(--ink);margin-bottom:1rem;line-height:1.75;max-width:68ch}
+  .page ul{margin:0 0 1.2rem 0;list-style:none;display:flex;flex-direction:column;gap:.7rem;max-width:68ch}
+  .page li{display:flex;gap:.6rem;align-items:flex-start;color:var(--ink);line-height:1.6}
+  .page li svg{width:20px;height:20px;color:var(--violet);flex-shrink:0;margin-top:.15rem}
+  .contact-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin:1.5rem 0 2rem}
+  .contact-card{background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--r);padding:1.3rem}
+  .contact-card .lab{font-family:'Space Mono';font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .contact-card a,.contact-card span{display:block;font-weight:700;font-size:1.05rem;margin-top:.3rem;color:var(--ink)}
+  .contact-card a:hover{color:var(--violet)}
+  /* flow pages */
+  .flow{padding:1.75rem 0 5rem;min-height:70vh}
+  .back{display:inline-flex;align-items:center;gap:.4rem;color:var(--muted);font-weight:600;font-size:.9rem;cursor:pointer}
+  .back:hover{color:var(--ink)}
+  .flow-card{max-width:680px;margin:1.5rem auto 0;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:2.4rem}
+  .flow-card.narrow{max-width:460px}
+  /* Sign up / Join pages: lift the card to sit level with the Back home arrow */
+  #view-registerClient .wrap,#view-registerFixer .wrap{position:relative}
+  #view-registerClient .back,#view-registerFixer .back{position:absolute;top:0;left:0;z-index:2}
+  /* shorter inputs + even spacing */
+  #view-registerClient .input,#view-registerFixer .input{padding:.55rem 1rem .69rem}
+  #view-registerClient .field .lab,#view-registerFixer .field .lab{margin-bottom:.35rem}
+  #view-registerClient .field,#view-registerFixer .field{margin-bottom:.7rem}
+  /* shorter primary button + clear space above it */
+  #view-registerClient #rc-form .btn-block,#view-registerFixer .flow-actions .btn{padding-top:.66rem;padding-bottom:.78rem}
+  #view-registerClient #rc-form .btn-block{margin-top:1rem}
+  #view-registerFixer .flow-actions{margin-top:1rem}
+  /* fit everything in one screen, no scroll */
+  #view-registerClient .flow,#view-registerFixer .flow{padding:1rem 0 1.25rem;min-height:0}
+  #view-registerClient .flow-card,#view-registerFixer .flow-card{margin-top:0;padding:1.6rem 2.4rem}
+  #view-registerClient .flow-title,#view-registerFixer .flow-title{font-size:1.55rem}
+  #view-registerClient .flow-sub,#view-registerFixer .flow-sub{margin-top:.4rem}
+  #view-registerClient .role-pill,#view-registerFixer .role-pill{margin-bottom:1rem}
+  #view-registerClient .alt-line,#view-registerFixer .alt-line{margin-top:.9rem}
+  #view-registerFixer textarea{min-height:74px}
+  /* I fix problems: a touch more breathing room between content */
+  #view-registerFixer .field{margin-bottom:1.25rem}
+  #view-registerFixer .flow-sub{margin-top:.6rem}
+  #view-registerFixer .two{gap:1.4rem}
+  #view-registerFixer .flow-actions{margin-top:1.5rem}
+  /* Post a problem page: same compact spacing as the registration pages */
+  #view-post .wrap{position:relative}
+  #view-post .back{position:absolute;top:0;left:0;z-index:2}
+  #view-post .flow{padding:1rem 0 1.25rem;min-height:0}
+  #view-post .flow-card{margin-top:0;padding:1.6rem 2.4rem}
+  #view-post .flow-title{font-size:1.55rem}
+  #view-post .flow-sub{margin-top:.4rem}
+  #view-post .input{padding:.55rem 1rem .69rem}
+  #view-post .field .lab{margin-bottom:.35rem}
+  #view-post .field{margin-bottom:.7rem}
+  #view-post textarea{min-height:74px}
+  #view-post .progress{margin:1rem auto 1.5rem}
+  #view-post .flow-actions{margin-top:1rem}
+  #view-post .flow-actions .btn{padding-top:.66rem;padding-bottom:.78rem}
+  /* Log in page: same compact spacing as the registration pages */
+  #view-login .wrap{position:relative}
+  #view-login .back{position:absolute;top:0;left:0;z-index:2}
+  #view-login .flow{padding:1rem 0 1.25rem;min-height:0}
+  #view-login .flow-card{margin-top:0;padding:1.6rem 2.4rem}
+  #view-login .flow-title{font-size:1.55rem}
+  #view-login .flow-sub{margin-top:.4rem}
+  #view-login .input{padding:.55rem 1rem .69rem}
+  #view-login .field .lab{margin-bottom:.35rem}
+  #view-login .field{margin-bottom:.7rem}
+  #view-login #login-form .btn-block{padding-top:.66rem;padding-bottom:.78rem;margin-top:1rem}
+  #view-login .alt-line{margin-top:.9rem}
+  #view-registerFixer .qchips{gap:.65rem}
+  .flow-title{font-size:1.9rem;text-align:center}
+  .flow-sub{text-align:center;color:var(--muted);margin:.6rem auto 0;max-width:42ch}
+  .progress{display:flex;align-items:center;justify-content:center;gap:.5rem;margin:1.8rem auto 2rem}
+  .pnode{display:flex;align-items:center;gap:.5rem}
+  .pdot{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:'Space Mono';font-size:.8rem;font-weight:700;background:var(--silver-soft);color:var(--muted);border:1px solid var(--line);transition:all .3s}
+  .pdot.active{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 6px 14px rgba(124,58,237,.35)}
+  .pdot.done{background:var(--violet-soft);color:var(--violet-deep);border-color:var(--violet-100)}
+  .pseg{width:42px;height:2px;background:var(--line)}
+  .pseg.fill{background:var(--violet)}
+  .plabel{font-size:.78rem;color:var(--muted);font-weight:600}
+  .fstep{display:none}
+  .fstep.active{display:block;animation:fade .3s ease}
+  .field{display:block;margin-bottom:1.2rem}
+  .field .lab{font-weight:600;font-size:.95rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+  .field .opt{font-weight:500;font-size:.78rem;color:var(--muted);background:var(--bg-soft);padding:.1rem .5rem;border-radius:var(--r-pill)}
+  .input,textarea,select{width:100%;font-family:inherit;font-size:1rem;line-height:1.2;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:.78rem 1rem .92rem;transition:border .15s,box-shadow .15s}
+  textarea{padding:.85rem 1rem}
+  textarea{resize:vertical;min-height:120px}
+  /* custom dropdown arrow with breathing room from the border */
+  select.input{-webkit-appearance:none;-moz-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236E6878' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right .9rem center;background-size:14px;padding-right:2.4rem}
+  #view-registerFixer select.input,#view-post select.input{padding-right:2.4rem}
+  .input:focus,textarea:focus,select:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 4px var(--violet-soft)}
+  .input.invalid,textarea.invalid,select.invalid{border-color:var(--bad);box-shadow:0 0 0 3px var(--bad-soft)}
+  .field-err{display:none;color:var(--bad);font-size:.8rem;font-weight:600;margin-top:.35rem}
+  .field-err.show{display:block}
+  .qchips{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:.5rem}
+  .upload{border:2px dashed var(--silver);border-radius:var(--r-sm);padding:.9rem 1rem;text-align:center;color:var(--muted);transition:all .18s;cursor:pointer;background:var(--bg-soft);font-size:.92rem}
+  .upload:hover{border-color:var(--violet);background:var(--violet-soft);color:var(--violet-deep)}
+  .upload svg{width:22px;height:22px;margin:0 auto .35rem;color:var(--violet)}
+  .upload strong{color:var(--ink);font-weight:700}
+  .upload input{display:none}
+  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:.5rem;margin-top:1rem}
+  .thumbs:empty{display:none}
+  .thumbs .tb{position:relative;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--line);aspect-ratio:1}
+  .thumbs .tb img{width:100%;height:100%;object-fit:cover}
+  .thumbs .tb .rm{position:absolute;top:.25rem;right:.25rem;background:rgba(27,21,37,.82);color:#fff;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.9rem;cursor:pointer;border:none;line-height:1}
+  .flow-actions{display:flex;gap:.8rem;margin-top:1.8rem}
+  .flow-actions .btn{flex:1;justify-content:center}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+  .done-wrap{text-align:center;padding:1rem 0}
+  .done-badge{width:84px;height:84px;border-radius:50%;background:var(--violet-soft);display:grid;place-items:center;margin:0 auto 1.4rem;color:var(--violet);animation:pop .5s cubic-bezier(.2,1.3,.4,1)}
+  .done-badge svg{width:42px;height:42px}
+  @keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+  .done-wrap h2{font-size:1.9rem}
+  .done-wrap p{color:var(--muted);max-width:40ch;margin:.8rem auto 1.8rem}
+  .summary{background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--r-sm);padding:1.1rem 1.3rem;text-align:left;max-width:420px;margin:0 auto 1.8rem;font-size:.93rem}
+  .summary .row{display:flex;gap:.6rem;padding:.3rem 0}
+  .summary .row b{min-width:96px;color:var(--muted);font-weight:600}
+  .role-pill{display:inline-flex;background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--r-pill);padding:.3rem;gap:.3rem;margin:0 auto 1.5rem}
+  .role-pill button{padding:.44rem 1.1rem .56rem;border-radius:var(--r-pill);font-weight:600;font-size:.9rem;color:var(--muted)}
+  .role-pill button.on{background:#fff;color:var(--violet-deep);box-shadow:var(--shadow-sm)}
+  .form-error{background:var(--bad-soft);color:var(--bad);border-radius:var(--r-sm);padding:.7rem 1rem;font-size:.9rem;font-weight:600;margin-bottom:1rem;display:none}
+  .form-error.show{display:block}
+  .alt-line{text-align:center;color:var(--muted);font-size:.92rem;margin-top:1.2rem}
+  .alt-line a{color:var(--violet-deep);font-weight:600;cursor:pointer}
+
+  /* ---------- dashboard ---------- */
+  .dash{padding:2.5rem 0 5rem;min-height:78vh}
+  .dash-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.6rem}
+  .dash-head h1{font-size:2rem}
+  .dash-head p{color:var(--muted);margin-top:.3rem}
+  .tabs{display:flex;justify-content:flex-start;gap:1.6rem;border-bottom:1px solid var(--line);margin-bottom:1.6rem;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .tabs.spread{justify-content:space-between;gap:.15rem}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:.6rem .7rem;font-weight:600;font-size:.88rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;display:flex;align-items:center;gap:.35rem;white-space:nowrap;flex-shrink:0}
+  .tab:hover{color:var(--ink)}
+  .tab.on{color:var(--violet-deep);border-bottom-color:var(--violet)}
+  .tab .count{font-family:'Space Mono';font-size:.7rem;background:var(--violet-soft);color:var(--violet-deep);padding:.05rem .45rem;border-radius:var(--r-pill)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1.2rem}
+  .tcard{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:1.3rem;display:flex;flex-direction:column;gap:.7rem}
+  .tcard .top{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+  .tcard h3{font-size:1.1rem;line-height:1.25}
+  .tcard .cat{font-family:'Space Mono';font-size:.72rem;line-height:1;color:var(--violet-deep);background:var(--violet-soft);padding:.32rem .6rem;border-radius:var(--r-pill);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
+  .tcard .desc{color:var(--muted);font-size:.93rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .tcard .tphotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.4rem}
+  .tcard .tphoto{border-radius:var(--r-sm);border:1px solid var(--line);height:110px;object-fit:cover;width:100%}
+  .tcard .meta{display:flex;flex-wrap:wrap;gap:.5rem 1.1rem;font-size:.85rem;color:var(--muted)}
+  .tcard .meta b{color:var(--ink)}
+  .badge{font-size:.72rem;font-weight:700;line-height:1;padding:.32rem .6rem;border-radius:var(--r-pill);text-transform:uppercase;letter-spacing:.03em;font-family:'Space Mono';white-space:nowrap;flex-shrink:0}
+  .b-submitted{background:var(--info-soft);color:var(--info)}
+  .b-price_countered{background:var(--warn-soft);color:var(--warn)}
+  .b-open{background:var(--violet-soft);color:var(--violet-deep)}
+  .b-assigned{background:var(--warn-soft);color:var(--warn)}
+  .b-work_done{background:var(--info-soft);color:var(--info)}
+  .b-completed{background:var(--ok-soft);color:var(--ok)}
+  .b-declined,.b-cancelled{background:var(--silver-soft);color:var(--muted)}
+  .price{font-family:'Bricolage Grotesque';font-weight:800;font-size:1.3rem}
+  .price.strike{text-decoration:line-through;color:var(--muted);font-size:1rem;font-weight:600}
+  .card-actions{display:flex;gap:.55rem;flex-wrap:wrap}
+  .note-box{background:var(--warn-soft);border:1px solid #F0E0B8;border-radius:var(--r-sm);padding:.7rem .9rem;font-size:.9rem;color:#7A5B0B}
+  .note-box b{color:#5C4408}
+  .events{border-top:1px dashed var(--line);padding-top:.7rem;margin-top:.2rem;display:flex;flex-direction:column;gap:.45rem;max-height:0;overflow:hidden;transition:max-height .3s ease}
+  .events.show{max-height:600px}
+  .ev{font-size:.82rem;color:var(--muted);display:flex;gap:.5rem}
+  .ev .dot{color:var(--violet);font-weight:700}
+  .ev b{color:var(--ink);font-weight:600}
+  .toggle-ev{font-size:.82rem;color:var(--violet-deep);font-weight:600;cursor:pointer;width:max-content}
+  .empty{text-align:center;color:var(--muted);padding:3rem 1rem;border:2px dashed var(--line);border-radius:var(--r);background:var(--bg-soft)}
+  .empty svg{width:40px;height:40px;color:var(--silver);margin:0 auto 1rem}
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.7rem;margin-bottom:1.4rem}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:var(--r-sm);padding:.6rem .85rem}
+  .stat .n{font-family:'Bricolage Grotesque';font-weight:800;font-size:1.3rem;line-height:1.1}
+  .stat .l{color:var(--muted);font-size:.78rem;font-weight:600}
+  table.users{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  table.users th,table.users td{text-align:left;padding:.85rem 1rem;font-size:.92rem;border-bottom:1px solid var(--line)}
+  table.users th{background:var(--bg-soft);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .people-bar{display:flex;justify-content:flex-start;margin-bottom:1rem}
+  .people-filter{display:inline-flex;align-items:center;gap:.5rem;font-size:.85rem;font-weight:600;color:var(--muted)}
+  .people-filter select{width:auto;padding:.4rem 2.2rem .52rem .8rem;font-size:.88rem;color:var(--ink)}
+  table.users tr:last-child td{border-bottom:none}
+  .role-chip{font-family:'Space Mono';font-size:.72rem;text-transform:uppercase;padding:.18rem .55rem;border-radius:var(--r-pill);font-weight:700}
+  .rc-admin{background:#1B1525;color:#fff}
+  .rc-manager{background:var(--violet-soft);color:var(--violet-deep)}
+  .rc-fixer{background:var(--info-soft);color:var(--info)}
+  .rc-client{background:var(--silver-soft);color:var(--muted)}
+
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(27,21,37,.5);backdrop-filter:blur(3px);display:none;place-items:center;z-index:100;padding:1rem}
+  .modal-bg.show{display:grid}
+  .modal{background:#fff;border-radius:var(--r);box-shadow:var(--shadow-lg);width:min(480px,94vw);padding:1.8rem;animation:pop .25s ease}
+  .modal h3{font-size:1.3rem;margin-bottom:.4rem}
+  .modal p.sub{color:var(--muted);font-size:.92rem;margin-bottom:1.2rem}
+  .modal .flow-actions{flex-wrap:wrap;gap:.6rem;margin-top:1.3rem}
+  .modal .flow-actions .btn{flex:1 1 auto;justify-content:center;padding:.64rem 1rem .76rem;font-size:.92rem}
+
+  /* toast */
+  #toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(150%);background:#1B1525;color:#fff;padding:.8rem 1.3rem;border-radius:var(--r-pill);font-weight:600;font-size:.92rem;box-shadow:var(--shadow-lg);z-index:200;transition:transform .35s cubic-bezier(.2,1.2,.3,1);max-width:90vw}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+  #toast.bad{background:var(--bad)}
+
+  /* footer */
+  footer{background:#fff;border-top:1px solid var(--line);padding:3rem 0 2rem}
+  .foot-grid{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:2rem}
+  .foot-grid p{color:var(--muted);font-size:.92rem;max-width:30ch;margin-top:.8rem}
+  .foot-links{display:flex;gap:3rem}
+  .foot-col h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.9rem;font-family:'Plus Jakarta Sans';font-weight:700}
+  .foot-col a{display:block;color:var(--ink);font-size:.93rem;padding:.25rem 0;font-weight:500;cursor:pointer}
+  .foot-col a:hover{color:var(--violet)}
+  .foot-bottom{margin-top:2.4rem;padding-top:1.4rem;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:var(--muted);font-size:.85rem;flex-wrap:wrap;gap:.6rem}
+
+  @media(max-width:880px){
+    .nav-links{display:none}.hero-grid{grid-template-columns:1fr;gap:2.5rem}
+    .preview{max-width:420px;margin:0 auto}.steps{grid-template-columns:1fr}.step .line{display:none}
+    .cats{grid-template-columns:1fr 1fr}.fixer-band{grid-template-columns:1fr;padding:2.2rem}
+    .two{grid-template-columns:1fr}.foot-grid{flex-direction:column}
+    table.users{display:block;overflow-x:auto;white-space:nowrap}
+  }
+  @media(max-width:600px){#view-registerClient .back,#view-registerFixer .back,#view-post .back,#view-login .back,#view-about .back,#view-profile .back{position:static}#view-registerClient .flow-card,#view-registerFixer .flow-card,#view-post .flow-card,#view-login .flow-card,#view-profile .flow-card{margin-top:1.5rem}#view-about .page-body{margin-top:1.5rem}}
+  @media(max-width:480px){.cats{grid-template-columns:1fr}.flow-card{padding:1.5rem}.plabel{display:none}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="logo" data-go="home" aria-label="FixIT home">
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-6 6a1.4 1.4 0 0 0 2 2l6-6a4 4 0 0 0 5.4-5.4l-2.3 2.3-2-2 2.3-2.3z"/></svg></span>
+      <span>Fix<b>IT</b></span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a data-go="home" data-hash="how">How it works</a>
+      <a data-go="home" data-hash="cats">Common Problems</a>
+      <a data-go="about">About</a>
+    </nav>
+    <div class="nav-cta" id="nav-cta"><!-- filled by app.js --></div>
+  </div>
+</header>
+
+<!-- ================= HOME ================= -->
+<main id="view-home" class="view active">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="dot"></span> IT help, made human</span>
+        <h1>Behind every glitch, there's <span class="hl">someone who can fix it.</span></h1>
+        <p class="lede">FixIT connects everyday people with IT pros who solve real tech problems — from a blue screen to a brand-new website.</p>
+        <div class="reassure">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          No tech jargon. Just tell us what's wrong, like you'd tell a friend.
+        </div>
+        <div class="hero-cta">
+          <button class="btn btn-primary btn-lg" data-go="post">Get it fixed
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <button class="btn btn-ghost btn-lg" data-go="registerFixer">Start fixing</button>
+        </div>
+        <div class="hero-note">
+          <span class="avatars"><span></span><span></span><span></span><span></span></span>
+          Trusted by people who'd rather not call "their tech cousin" again.
+        </div>
+      </div>
+      <div class="preview">
+        <div class="float-tag ft1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg> Avg. reply in 12 min</div>
+        <div class="float-tag ft2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Verified fixers only</div>
+        <div class="pcard">
+          <div class="phead"><span class="ptitle">Post your problem</span><span class="pstep">3 clicks</span></div>
+          <div class="chiprow marquee">
+            <div class="chip-track" aria-hidden="true">
+              <span class="chip on">🖥️ Blue screen</span><span class="chip">🐌 Slow PC</span><span class="chip">🌐 Website</span><span class="chip">⚙️ Backend</span><span class="chip">📶 Wi-Fi</span><span class="chip">🛡️ Virus</span><span class="chip">📱 Phone &amp; apps</span><span class="chip">💾 Data recovery</span><span class="chip">✨ Something else</span>
+              <span class="chip on">🖥️ Blue screen</span><span class="chip">🐌 Slow PC</span><span class="chip">🌐 Website</span><span class="chip">⚙️ Backend</span><span class="chip">📶 Wi-Fi</span><span class="chip">🛡️ Virus</span><span class="chip">📱 Phone &amp; apps</span><span class="chip">💾 Data recovery</span><span class="chip">✨ Something else</span>
+            </div>
+          </div>
+          <div class="fakefield">"My laptop shows a blue screen every time I open it…"</div>
+          <div class="pbar">
+            <span class="picon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L7 20"/></svg></span>
+            <span class="pbtn" data-go="registerClient" role="button" tabindex="0">Send to a fixer</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow"><span class="dot"></span> Four steps, no stress</span>
+        <h2>From "it's broken" to "it's fixed"</h2>
+        <p>You don't need to know what's wrong. You just need to describe it — a manager handles the rest.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="num mono">01</span><span class="line"></span>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+          <h3>Describe it</h3><p>Pick what's wrong, type a sentence, add a photo, and name a budget if you like.</p></div>
+        <div class="step"><span class="num mono">02</span><span class="line"></span>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <h3>A manager checks it</h3><p>A real person reviews your problem, agrees on a fair price, and explains it in plain words.</p></div>
+        <div class="step"><span class="num mono">03</span><span class="line"></span>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 11-2 2-2-2"/></svg></div>
+          <h3>A fixer takes it</h3><p>The right specialist picks up your job and gets to work — remotely or in person.</p></div>
+        <div class="step"><span class="num mono">04</span><span class="line"></span>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div>
+          <h3>You confirm</h3><p>Once it's solved, you confirm it's done. Simple.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section soft" id="cats">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow"><span class="dot"></span> Common Problems</span>
+        <h2>What can a fixer help with?</h2>
+        <p>Tap the one that sounds like your problem — it pre-fills the form for you.</p>
+      </div>
+      <div class="cats" id="home-cats"><!-- filled by app.js --></div>
+      <div class="home-other">
+        <span class="home-other-lab">Don't see it? Describe it yourself:</span>
+        <div class="home-other-row">
+          <input id="home-other-input" class="input" placeholder="e.g. My printer won't connect to Wi-Fi" maxlength="60">
+          <button class="btn btn-primary" id="home-other-btn">Get it fixed
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="fixer-band">
+        <div>
+          <span class="eyebrow"><span class="dot"></span> For specialists</span>
+          <h2>Turn what you already know into income.</h2>
+          <p>Pick the problems you can solve, set your own rate, and start helping people who genuinely need you — on your schedule.</p>
+          <div class="actions">
+            <button class="btn btn-primary btn-lg" data-go="registerFixer">Start fixing
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="fixer-perks">
+          <div class="perk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Choose your own skills &amp; rate</div>
+          <div class="perk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Get matched to relevant jobs only</div>
+          <div class="perk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> First to accept gets the job</div>
+          <div class="perk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Work remote or in person</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= LOGIN ================= -->
+<main id="view-login" class="view">
+  <div class="flow"><div class="wrap">
+    <button class="back" data-go="home"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back home</button>
+    <div class="flow-card narrow">
+      <h2 class="flow-title">Welcome back</h2>
+      <p class="flow-sub">Log in to post problems or pick up jobs.</p>
+      <div style="margin-top:.7rem"></div>
+      <div class="form-error" id="login-error"></div>
+      <form id="login-form" novalidate>
+        <label class="field"><span class="lab">Email</span><input class="input" name="email" type="email" placeholder="you@email.com"></label>
+        <label class="field"><span class="lab">Password</span><input class="input" name="password" type="password" placeholder="••••••••"></label>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">Log in</button>
+      </form>
+      <p class="alt-line">New here? <a data-go="registerClient">Create a client account</a> · <a data-go="registerFixer">Join as a fixer</a></p>
+    </div>
+  </div></div>
+</main>
+
+<!-- ================= REGISTER CLIENT ================= -->
+<main id="view-registerClient" class="view">
+  <div class="flow"><div class="wrap">
+    <button class="back" data-go="home"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back home</button>
+    <div class="flow-card narrow">
+      <div style="text-align:center">
+        <div class="role-pill" role="tablist">
+          <button class="on" type="button">I have a problem</button>
+          <button type="button" data-go="registerFixer">I fix problems</button>
+        </div>
+      </div>
+      <h2 class="flow-title">Create your account</h2>
+      <p class="flow-sub">So we can keep you updated on fixing.</p>
+      <div style="margin-top:.7rem"></div>
+      <div class="form-error" id="rc-error"></div>
+      <form id="rc-form" novalidate>
+        <label class="field"><span class="lab">Your name</span><input class="input" name="name" placeholder="Jordan Smith"></label>
+        <label class="field"><span class="lab">Email</span><input class="input" name="email" type="email" placeholder="you@email.com"></label>
+        <label class="field"><span class="lab">Phone</span><input class="input" name="phone" type="tel" placeholder="+1 555 0100"></label>
+        <div class="two">
+          <label class="field"><span class="lab">Choose a password</span><input class="input" name="password" type="password" placeholder="••••••••"></label>
+          <label class="field"><span class="lab">Repeat password</span><input class="input" name="password2" type="password" placeholder="••••••••"></label>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">Create account</button>
+      </form>
+      <p class="alt-line">Already have an account? <a data-go="login">Log in</a></p>
+    </div>
+  </div></div>
+</main>
+
+<!-- ================= REGISTER FIXER ================= -->
+<main id="view-registerFixer" class="view">
+  <div class="flow"><div class="wrap">
+    <button class="back" data-go="home"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back home</button>
+    <div class="flow-card">
+      <div style="text-align:center">
+        <div class="role-pill" role="tablist">
+          <button class="on" type="button">I fix problems</button>
+          <button type="button" data-go="registerClient">I have a problem</button>
+        </div>
+      </div>
+      <div class="form-error" id="rf-error" style="max-width:560px;margin:0 auto 1rem"></div>
+      <form id="rf-form" novalidate>
+        <!-- step 1 -->
+        <div class="fstep active" data-pstep="1">
+          <h2 class="flow-title">Join as a fixer</h2>
+          <p class="flow-sub">Tell us what you're great at. You can change all of this later.</p>
+          <div style="margin-top:.7rem"></div>
+          <div class="two">
+            <label class="field"><span class="lab">Full name</span><input class="input" name="name" placeholder="Alex Rivera"></label>
+            <label class="field"><span class="lab">Email</span><input class="input" name="email" type="email" placeholder="alex@email.com"></label>
+          </div>
+          <label class="field">
+            <span class="lab">What can you fix? <span class="opt">your qualifications — pick all that apply</span></span>
+            <div class="qchips" id="skill-chips"><!-- filled by app.js --></div>
+          </label>
+          <label class="field"><span class="lab">Other speciality <span class="opt">type your own — comma-separate for more</span></span><input class="input" name="custom_skills" id="custom-skills" placeholder="e.g. Printer setup, Smart-home devices"></label>
+          <label class="field"><span class="lab">Short bio</span><textarea class="input" name="bio" placeholder="e.g. 6 years in IT support. Fast with Windows crashes, Wi-Fi issues, and small business websites."></textarea></label>
+          <div class="flow-actions"><button class="btn btn-primary btn-block" type="button" data-pnext="2">Continue
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+        </div>
+        <!-- step 2 -->
+        <div class="fstep" data-pstep="2">
+          <h2 class="flow-title">Your experience &amp; availability</h2>
+          <p class="flow-sub">This helps managers match you to the right jobs.</p>
+          <div style="margin-top:.7rem"></div>
+          <div class="two">
+            <label class="field"><span class="lab">Years of experience</span>
+              <select class="input" name="experience"><option>Less than 1</option><option>1–3 years</option><option>3–6 years</option><option>6+ years</option></select></label>
+            <label class="field"><span class="lab">How do you work?</span>
+              <select class="input" name="work_mode"><option>Remote only</option><option>In person only</option><option>Remote &amp; in person</option></select></label>
+          </div>
+          <div class="two">
+            <label class="field"><span class="lab">Choose a password</span><input class="input" name="password" type="password" placeholder="••••••••"></label>
+            <label class="field"><span class="lab">Repeat password</span><input class="input" name="password2" type="password" placeholder="••••••••"></label>
+          </div>
+          <div class="flow-actions">
+            <button class="btn btn-ghost" type="button" data-pprev="1">Back</button>
+            <button class="btn btn-primary" type="submit">Create my profile</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div></div>
+</main>
+
+<!-- ================= POST A PROBLEM ================= -->
+<main id="view-post" class="view">
+  <div class="flow"><div class="wrap">
+    <button class="back" data-go="home"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back home</button>
+    <div class="flow-card">
+      <div class="progress" id="post-progress">
+        <div class="pnode"><span class="pdot active" data-d="1">1</span><span class="plabel">Describe</span></div>
+        <span class="pseg" data-s="1"></span>
+        <div class="pnode"><span class="pdot" data-d="2">2</span><span class="plabel">Budget</span></div>
+        <span class="pseg" data-s="2"></span>
+        <div class="pnode"><span class="pdot" data-d="3">3</span><span class="plabel">Done</span></div>
+      </div>
+
+      <!-- STEP 1 -->
+      <div class="fstep active" data-step="1">
+        <h2 class="flow-title">What's going wrong?</h2>
+        <p class="flow-sub">Pick the closest match, then describe it in your own words.</p>
+        <div style="margin-top:.7rem"></div>
+        <div class="form-error" id="post-error"></div>
+        <label class="field"><span class="lab">Type of problem</span><div class="qchips" id="cat-chips"><!-- filled --></div></label>
+        <label class="field" id="custom-cat-wrap" style="display:none"><span class="lab">Tell us the type of problem <span class="opt">in your own words</span></span><input class="input" id="custom-cat" placeholder="e.g. My printer won't connect to Wi-Fi" maxlength="60"></label>
+        <label class="field"><span class="lab">A short title <span class="opt">optional</span></span><input class="input" id="problem-title" placeholder="e.g. Laptop won't start"></label>
+        <label class="field"><span class="lab">Describe your problem</span>
+          <textarea id="problem-text" class="input" placeholder="e.g. My laptop turns on but freezes on a blue screen with white text. It started yesterday."></textarea></label>
+        <div class="field"><span class="lab">Add photos <span class="opt">optional — up to 4</span></span>
+          <label class="upload" id="drop">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 9l5-5 5 5M12 4v12"/></svg>
+            <div><strong>Tap to add photos</strong> of the problem</div>
+            <input type="file" id="file" accept="image/*" multiple>
+          </label>
+          <div class="thumbs" id="thumbs"></div>
+        </div>
+        <div class="flow-actions"><button class="btn btn-primary btn-block" data-next="2">Continue
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="fstep" data-step="2">
+        <h2 class="flow-title">Your budget &amp; timing</h2>
+        <p class="flow-sub">Name a price you have in mind. A manager will confirm it or suggest a fair one — and always explain why.</p>
+        <div style="margin-top:.7rem"></div>
+        <label class="field"><span class="lab">What would you like to pay? <span class="opt">USD — optional</span></span><input class="input" id="c-price" type="number" min="0" placeholder="e.g. 40"></label>
+        <label class="field"><span class="lab">How soon do you need help?</span>
+          <select class="input" id="c-when"><option>As soon as possible</option><option>Within a few days</option><option>No rush — whenever</option></select></label>
+        <div class="flow-actions">
+          <button class="btn btn-ghost" data-prev="1">Back</button>
+          <button class="btn btn-primary" id="post-submit" data-next="3">Send to a manager
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="fstep" data-step="3">
+        <div class="done-wrap">
+          <div class="done-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <h2>Your problem is with a manager.</h2>
+          <p>A manager is reviewing it now. They'll confirm the price (or suggest a fair one) and then a qualified fixer takes over.</p>
+          <div class="summary" id="summary"></div>
+          <button class="btn btn-primary btn-lg" data-go="dashboard">Go to my problems</button>
+        </div>
+      </div>
+    </div>
+  </div></div>
+</main>
+
+<!-- ================= DASHBOARD (role-based, rendered by app.js) ================= -->
+<main id="view-dashboard" class="view">
+  <div class="dash"><div class="wrap" id="dash-root"><!-- filled by app.js --></div></div>
+</main>
+
+<!-- ================= PROFILE ================= -->
+<main id="view-profile" class="view">
+  <div class="flow"><div class="wrap">
+    <button class="back" data-go="dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back to dashboard</button>
+    <div class="flow-card" id="profile-root"><!-- filled by app.js --></div>
+  </div></div>
+</main>
+
+<!-- ================= ABOUT ================= -->
+<main id="view-about" class="view">
+  <div class="page"><div class="wrap">
+    <button class="back" data-go="home"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back home</button>
+    <div class="page-body">
+    <h1 class="page-title">About FixIT</h1>
+    <p class="page-lead">FixIT exists for one reason: getting a real tech problem solved shouldn't require knowing tech.</p>
+    <p>Most platforms expect you to already speak the language — to know whether you need "hardware support" or a "backend engineer." We flipped that around. On FixIT you describe what's wrong in plain words, and a real person takes it from there.</p>
+    <h2>How we're different</h2>
+    <ul>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>No jargon.</b> Tap what sounds like your problem, type a sentence, optionally add a photo. That's it.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>A human in the loop.</b> A manager reviews every request, agrees on a fair price, and explains it in words anyone can understand.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>The right specialist.</b> Approved jobs go out to qualified fixers, and the first available one picks it up.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><b>You stay in control.</b> Nothing is final until you confirm the work is done.</span></li>
+    </ul>
+    <p>From a blue screen to a brand-new website, FixIT connects everyday people with IT pros who actually want to help.</p>
+    <button class="btn btn-primary btn-lg" data-go="post" style="margin-top:.6rem">Get it fixed
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <hr style="border:none;border-top:1px solid var(--line);margin:2.6rem 0">
+
+    <h2 id="trust-sec">Trust &amp; safety</h2>
+    <p class="page-lead" style="margin-bottom:1.2rem">We want FixIT to feel safe for people who aren't sure who to trust with their tech.</p>
+    <ul>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Every job is reviewed by a manager.</b> A real person checks your request before any fixer sees it.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Clear, explained pricing.</b> You name your budget; if the manager suggests a different price, they tell you exactly why. You can accept or decline.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Qualified fixers only.</b> Jobs are matched to specialists, and a fixer must accept before starting.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>You confirm completion.</b> A job is only marked done after you say it's fixed.</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg><span><b>Cancel anytime.</b> Fixed it yourself? You can call off a request before it's completed.</span></li>
+    </ul>
+    <p>We only collect what's needed to solve your problem — your contact details and what you tell us about the issue. Photos you upload are used solely to help a fixer understand the problem.</p>
+
+    <hr style="border:none;border-top:1px solid var(--line);margin:2.6rem 0">
+
+    <h2 id="contact-sec">Contact us</h2>
+    <p class="page-lead" style="margin-bottom:1.2rem">Questions, feedback, or need a hand? We'd love to hear from you.</p>
+    <div class="contact-cards">
+      <div class="contact-card"><span class="lab">Email</span><a href="mailto:hello@fixit.app">hello@fixit.app</a></div>
+      <div class="contact-card"><span class="lab">Support</span><a href="mailto:support@fixit.app">support@fixit.app</a></div>
+      <div class="contact-card"><span class="lab">Hours</span><span>Mon–Fri, 9am–6pm</span></div>
+    </div>
+    <div class="form-error" id="contact-error"></div>
+    <form id="contact-form" novalidate style="max-width:560px">
+      <div class="two">
+        <label class="field"><span class="lab">Your name</span><input class="input" name="name" placeholder="Jordan Smith"></label>
+        <label class="field"><span class="lab">Email</span><input class="input" name="email" type="email" placeholder="you@email.com"></label>
+      </div>
+      <label class="field"><span class="lab">Message</span><textarea class="input" name="message" placeholder="How can we help?"></textarea></label>
+      <button class="btn btn-primary" type="submit">Send message</button>
+    </form>
+    </div>
+  </div></div>
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="logo" data-go="home"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-6 6a1.4 1.4 0 0 0 2 2l6-6a4 4 0 0 0 5.4-5.4l-2.3 2.3-2-2 2.3-2.3z"/></svg></span> <span>Fix<b>IT</b></span></a>
+        <p>The simplest way to get a real IT problem solved by a real person.</p>
+      </div>
+      <div class="foot-links">
+        <div class="foot-col"><h4>Get help</h4><a data-go="post">Post a problem</a><a data-go="home" data-hash="cats">Common Problems</a><a data-go="home" data-hash="how">How it works</a></div>
+        <div class="foot-col"><h4>For fixers</h4><a data-go="registerFixer">Become a fixer</a><a data-go="login">Log in</a></div>
+        <div class="foot-col"><h4>Company</h4><a data-go="about">About</a><a data-go="about" data-hash="trust-sec">Trust &amp; safety</a><a data-go="about" data-hash="contact-sec">Contact</a></div>
+      </div>
+    </div>
+    <div class="foot-bottom"><span>© 2026 FixIT. A friendlier kind of tech help.</span><span>Privacy · Terms</span></div>
+  </div>
+</footer>
+
+<!-- modal + toast -->
+<div class="modal-bg" id="modal-bg"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
