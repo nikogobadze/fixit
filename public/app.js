@@ -688,7 +688,7 @@ function managerAllCard(t) {
   const rateLine = (t.status === 'completed' && t.rating)
     ? `<div class="rated">Rated ${starsRO(t.rating)}${t.rating_comment ? ` — “${esc(t.rating_comment)}”` : ''}</div>` : '';
   const release = t.status === 'assigned'
-    ? `<div class="card-actions"><button class="btn btn-ghost btn-sm" data-action="release">Release / reassign</button></div>` : '';
+    ? `<div class="card-actions"><button class="btn btn-ghost btn-sm" data-action="release">Reassign</button></div>` : '';
   return cardShell(t, `${priceBlock(t)}${note}
     <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span>${t.fixer?`<span>Fixer: <b>${esc(t.fixer.name)}</b></span>`:''}</div>
     ${payLine}${rateLine}${release}`);
