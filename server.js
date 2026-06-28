@@ -26,9 +26,6 @@ app.use(cookieParser());
 /* wrap async handlers so thrown errors reach the error handler */
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-/* make sure the schema/seed exist before handling anything (cold start) */
-app.use(ah(async (req, res, next) => { await ready(); next(); }));
-
 /* ---------- uploads (Vercel Blob in prod, local disk in dev) ---------- */
 const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
 // On Vercel the project dir is read-only; only /tmp is writable. Locally use ./uploads.
@@ -51,6 +48,10 @@ async function saveUpload(file) {
   return name; // filename, served from /uploads
 }
 const fileUrl = (ref) => !ref ? null : (/^https?:\/\//.test(ref) ? ref : `/uploads/${path.basename(ref)}`);
+
+/* Serve the SPA shell + static assets immediately — no DB wait, so reloads are fast. */
+app.use(express.static(path.join(__dirname, 'public')));
+if (!useBlob) app.use('/uploads', express.static(UPLOAD_DIR));
 
 /* ---------- helpers ---------- */
 async function ratingFor(fixerId) {
@@ -142,7 +143,10 @@ const setAvatar = (ref, id) => run('UPDATE users SET avatar=? WHERE id=?', [ref,
 /* ==================================================================
    PUBLIC
 ================================================================== */
-app.get('/api/categories', (req, res) => res.json(CATEGORIES));
+app.get('/api/categories', (req, res) => res.json(CATEGORIES)); // no DB — instant
+
+/* Everything below talks to the DB: ensure the schema/seed exist (cold start). */
+app.use('/api', ah(async (req, res, next) => { await ready(); next(); }));
 
 app.get('/api/reviews', ah(async (req, res) => {
   const rows = await all(`
@@ -442,10 +446,8 @@ app.post('/api/admin/users/:id/role', auth, requireRole('admin'), ah(async (req,
 }));
 
 /* ==================================================================
-   STATIC + SPA + errors
+   SPA fallback + errors  (static assets are served near the top)
 ================================================================== */
-if (!useBlob) app.use('/uploads', express.static(UPLOAD_DIR));
-app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.use((err, req, res, next) => {

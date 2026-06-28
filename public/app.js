@@ -1011,8 +1011,10 @@ async function saveProfile(e) {
 ================================================================== */
 (async function init() {
   renderNav();                       // show Sign up / Log in instantly (no empty navbar)
-  try { const { user } = await api('/api/me'); state.user = user; renderNav(); } catch {}
-  await loadCategories();
+  // Fetch login status + categories in parallel (not one-after-another).
+  const cats = loadCategories();
+  const me = api('/api/me').then(r => { state.user = r.user; renderNav(); }).catch(() => {});
+  await Promise.allSettled([cats, me]);
   // Open the view that matches the current URL (deep link / refresh / first load).
   const initialView = VIEW_BY_PATH[location.pathname] || 'home';
   const initialHash = location.hash ? location.hash.slice(1) : null;
