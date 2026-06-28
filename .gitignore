@@ -8,3 +8,4 @@ uploads/*
 server.log
 
 backups/
+.vercel

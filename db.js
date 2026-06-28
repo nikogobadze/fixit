@@ -1,21 +1,25 @@
 /* ------------------------------------------------------------------
    db.js — database setup, schema, shared taxonomy, and seed data.
-   Uses Node's built-in SQLite (node:sqlite) so there is no native
-   build step: a plain `npm install` is enough to run the project.
+
+   Uses libSQL (@libsql/client) which speaks SQLite. Locally it runs
+   against a file (fixit.db); in production set DATABASE_URL to a Turso
+   database (libsql://...) + DATABASE_AUTH_TOKEN. Same SQL either way.
 ------------------------------------------------------------------- */
-const { DatabaseSync } = require('node:sqlite');
-const path = require('path');
+const { createClient } = require('@libsql/client');
 const bcrypt = require('bcryptjs');
 
-const db = new DatabaseSync(path.join(__dirname, 'fixit.db'));
-db.exec('PRAGMA journal_mode = WAL;');
-db.exec('PRAGMA foreign_keys = ON;');
+const url = process.env.DATABASE_URL || 'file:fixit.db';
+const authToken = process.env.DATABASE_AUTH_TOKEN || undefined;
+const db = createClient(authToken ? { url, authToken } : { url });
+
+/* tiny async query helpers (positional ? args, same as before) */
+async function run(sql, args = []) { return db.execute({ sql, args }); }
+async function get(sql, args = []) { const r = await db.execute({ sql, args }); return r.rows[0] || null; }
+async function all(sql, args = []) { const r = await db.execute({ sql, args }); return r.rows; }
 
 /* ------------------------------------------------------------------
-   Shared taxonomy.
-   The SAME category keys are used for (a) the problems clients post
-   and (b) the skills fixers register. That shared list is what makes
-   the matching between a task and qualified fixers trivial.
+   Shared taxonomy — the SAME keys are used for the problems clients
+   post and the skills fixers register, which makes matching trivial.
 ------------------------------------------------------------------- */
 const CATEGORIES = [
   { key: 'hardware', label: 'Hardware & crashes', emoji: '🖥️' },
@@ -31,10 +35,7 @@ const CATEGORIES = [
 const CATEGORY_KEYS = new Set(CATEGORIES.map(c => c.key));
 const labelFor = (key) => (CATEGORIES.find(c => c.key === key) || {}).label || key;
 
-/* ------------------------------------------------------------------
-   Schema
-------------------------------------------------------------------- */
-db.exec(`
+const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   role          TEXT NOT NULL CHECK (role IN ('client','fixer','manager','admin')),
@@ -46,35 +47,32 @@ CREATE TABLE IF NOT EXISTS users (
   experience    TEXT,
   hourly_rate   INTEGER,
   work_mode     TEXT,
-  avatar        TEXT,                          -- profile picture filename
-  is_primary    INTEGER NOT NULL DEFAULT 0,   -- the one un-demotable seed admin
+  avatar        TEXT,
+  is_primary    INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
--- A fixer's qualifications (category keys). Many rows per fixer.
 CREATE TABLE IF NOT EXISTS fixer_skills (
   user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   PRIMARY KEY (user_id, category)
 );
-
 CREATE TABLE IF NOT EXISTS tasks (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
   client_id        INTEGER NOT NULL REFERENCES users(id),
   category         TEXT NOT NULL,
-  custom_category  TEXT,                  -- free-text problem type (when category = 'other')
+  custom_category  TEXT,
   title            TEXT NOT NULL,
   description      TEXT NOT NULL,
   photo_path       TEXT,
   urgency          TEXT,
-  proposed_price   INTEGER,            -- price the client named
-  counter_price    INTEGER,            -- manager's adjusted price (if any)
-  manager_note     TEXT,               -- manager's explanation of the price
-  agreed_price     INTEGER,            -- the price both sides settled on
-  paid             INTEGER NOT NULL DEFAULT 0,   -- 1 once the client has paid
+  proposed_price   INTEGER,
+  counter_price    INTEGER,
+  manager_note     TEXT,
+  agreed_price     INTEGER,
+  paid             INTEGER NOT NULL DEFAULT 0,
   paid_at          TEXT,
   card_last4       TEXT,
-  rating           INTEGER,            -- 1–5 stars the client gave the fixer
+  rating           INTEGER,
   rating_comment   TEXT,
   rated_at         TEXT,
   status           TEXT NOT NULL DEFAULT 'submitted',
@@ -83,8 +81,6 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at       TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
--- Lightweight audit trail so every screen can show "what happened".
 CREATE TABLE IF NOT EXISTS task_events (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id   INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
@@ -92,83 +88,59 @@ CREATE TABLE IF NOT EXISTS task_events (
   text      TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_tasks_status     ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_client     ON tasks(client_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_fixer      ON tasks(assigned_fixer_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_manager    ON tasks(manager_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_created    ON tasks(created_at);
+CREATE INDEX IF NOT EXISTS idx_tasks_rating     ON tasks(assigned_fixer_id, rating);
+CREATE INDEX IF NOT EXISTS idx_events_task      ON task_events(task_id);
+CREATE INDEX IF NOT EXISTS idx_fixer_skills_cat ON fixer_skills(category);
+CREATE INDEX IF NOT EXISTS idx_users_role       ON users(role);
+`;
 
--- Indexes on the columns we filter / join / sort by most often.
-CREATE INDEX IF NOT EXISTS idx_tasks_status        ON tasks(status);
-CREATE INDEX IF NOT EXISTS idx_tasks_client        ON tasks(client_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_fixer         ON tasks(assigned_fixer_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_manager       ON tasks(manager_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_created       ON tasks(created_at);
-CREATE INDEX IF NOT EXISTS idx_tasks_rating        ON tasks(assigned_fixer_id, rating);
-CREATE INDEX IF NOT EXISTS idx_events_task         ON task_events(task_id);
-CREATE INDEX IF NOT EXISTS idx_fixer_skills_cat    ON fixer_skills(category);
-CREATE INDEX IF NOT EXISTS idx_users_role          ON users(role);
-`);
-
-/*
-  Task status lifecycle
-  ---------------------
-  submitted        -> client posted it; waiting for a manager
-  price_countered  -> manager proposed a different price; waiting for client
-  declined         -> client rejected the countered price (dead end)
-  open             -> price agreed; broadcast to qualified fixers
-  assigned         -> a fixer claimed it (first to accept wins)
-  work_done        -> fixer marked it solved; waiting for client confirmation
-  completed        -> client confirmed it is fixed
-  cancelled        -> manager/admin cancelled it
-*/
-
-/* Migration: add newer columns to databases that predate them. */
-{
-  const cols = db.prepare(`PRAGMA table_info(tasks)`).all().map(c => c.name);
-  if (!cols.includes('custom_category')) db.exec(`ALTER TABLE tasks ADD COLUMN custom_category TEXT`);
-  if (!cols.includes('paid'))           db.exec(`ALTER TABLE tasks ADD COLUMN paid INTEGER NOT NULL DEFAULT 0`);
-  if (!cols.includes('paid_at'))        db.exec(`ALTER TABLE tasks ADD COLUMN paid_at TEXT`);
-  if (!cols.includes('card_last4'))     db.exec(`ALTER TABLE tasks ADD COLUMN card_last4 TEXT`);
-  if (!cols.includes('rating'))         db.exec(`ALTER TABLE tasks ADD COLUMN rating INTEGER`);
-  if (!cols.includes('rating_comment')) db.exec(`ALTER TABLE tasks ADD COLUMN rating_comment TEXT`);
-  if (!cols.includes('rated_at'))       db.exec(`ALTER TABLE tasks ADD COLUMN rated_at TEXT`);
-  const ucols = db.prepare(`PRAGMA table_info(users)`).all().map(c => c.name);
-  if (!ucols.includes('avatar'))        db.exec(`ALTER TABLE users ADD COLUMN avatar TEXT`);
+async function columns(table) {
+  const r = await db.execute(`PRAGMA table_info(${table})`);
+  return r.rows.map(c => c.name);
 }
 
-/* ------------------------------------------------------------------
-   Seed data (only on first run / empty DB)
-------------------------------------------------------------------- */
-function seed() {
-  const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
-  if (count > 0) return;
+async function seed() {
+  const r = await db.execute(`SELECT COUNT(*) AS n FROM users`);
+  if (Number(r.rows[0].n) > 0) return;
+  const h = (pw) => bcrypt.hashSync(pw, 10);
+  const insUser = async (role, name, email, phone, pw, bio, exp, rate, mode, primary) => {
+    const res = await db.execute({
+      sql: `INSERT INTO users (role,name,email,phone,password_hash,bio,experience,hourly_rate,work_mode,is_primary)
+            VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id`,
+      args: [role, name, email, phone, h(pw), bio, exp, rate, mode, primary],
+    });
+    return Number(res.rows[0].id);
+  };
+  const insSkill = (uid, cat) => db.execute({ sql: 'INSERT INTO fixer_skills (user_id,category) VALUES (?,?)', args: [uid, cat] });
 
-  const hash = (pw) => bcrypt.hashSync(pw, 10);
-  const insUser = db.prepare(`
-    INSERT INTO users (role,name,email,phone,password_hash,bio,experience,hourly_rate,work_mode,is_primary)
-    VALUES (?,?,?,?,?,?,?,?,?,?)
-  `);
-  const insSkill = db.prepare('INSERT INTO fixer_skills (user_id,category) VALUES (?,?)');
-
-  // The single primary admin.
-  insUser.run('admin', 'FixIT Admin', 'admin@fixit.app', null, hash('admin123'),
-              null, null, null, null, 1);
-
-  // A manager.
-  insUser.run('manager', 'Morgan Lee', 'manager@fixit.app', null, hash('manager123'),
-              'Triages incoming problems and sets fair prices.', null, null, null, 0);
-
-  // A couple of fixers with skills.
-  const fixerA = insUser.run('fixer', 'Alex Rivera', 'alex@fixit.app', null, hash('fixer123'),
-    '6 years in IT support. Fast with Windows crashes and Wi-Fi issues.', '6+ years', 35, 'Remote & in person', 0).lastInsertRowid;
-  ['hardware','os','network','security'].forEach(c => insSkill.run(fixerA, c));
-
-  const fixerB = insUser.run('fixer', 'Sam Patel', 'sam@fixit.app', null, hash('fixer123'),
-    'Full-stack developer. Websites, APIs, and mobile apps.', '3–6 years', 45, 'Remote only', 0).lastInsertRowid;
-  ['web','backend','mobile','data'].forEach(c => insSkill.run(fixerB, c));
-
-  // A demo client.
-  insUser.run('client', 'Jordan Smith', 'client@fixit.app', '+1 555 0100', hash('client123'),
-              null, null, null, null, 0);
-
+  await insUser('admin', 'FixIT Admin', 'admin@fixit.app', null, 'admin123', null, null, null, null, 1);
+  await insUser('manager', 'Morgan Lee', 'manager@fixit.app', null, 'manager123', 'Triages incoming problems and sets fair prices.', null, null, null, 0);
+  const a = await insUser('fixer', 'Alex Rivera', 'alex@fixit.app', null, 'fixer123', '6 years in IT support. Fast with Windows crashes and Wi-Fi issues.', '6+ years', 35, 'Remote & in person', 0);
+  for (const c of ['hardware', 'os', 'network', 'security']) await insSkill(a, c);
+  const s = await insUser('fixer', 'Sam Patel', 'sam@fixit.app', null, 'fixer123', 'Full-stack developer. Websites, APIs, and mobile apps.', '3–6 years', 45, 'Remote only', 0);
+  for (const c of ['web', 'backend', 'mobile', 'data']) await insSkill(s, c);
+  await insUser('client', 'Jordan Smith', 'client@fixit.app', '+1 555 0100', 'client123', null, null, null, null, 0);
   console.log('[seed] Created demo accounts (see README for logins).');
 }
-seed();
 
-module.exports = { db, CATEGORIES, CATEGORY_KEYS, labelFor };
+let initPromise = null;
+async function init() {
+  await db.executeMultiple(SCHEMA);
+  // Migrations for databases that predate newer columns.
+  const t = await columns('tasks');
+  const addsT = { custom_category: 'TEXT', paid: 'INTEGER NOT NULL DEFAULT 0', paid_at: 'TEXT',
+    card_last4: 'TEXT', rating: 'INTEGER', rating_comment: 'TEXT', rated_at: 'TEXT' };
+  for (const [c, def] of Object.entries(addsT)) if (!t.includes(c)) await db.execute(`ALTER TABLE tasks ADD COLUMN ${c} ${def}`);
+  const u = await columns('users');
+  if (!u.includes('avatar')) await db.execute(`ALTER TABLE users ADD COLUMN avatar TEXT`);
+  await seed();
+}
+/* ready resolves once the schema/seed are in place (idempotent, cached). */
+function ready() { return (initPromise = initPromise || init()); }
+
+module.exports = { db, run, get, all, ready, CATEGORIES, CATEGORY_KEYS, labelFor };

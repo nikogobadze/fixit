@@ -8,10 +8,10 @@ Built to be the *easiest* full stack to run on Windows:
 
 | Layer    | Choice                          | Why |
 |----------|---------------------------------|-----|
-| Server   | Node + Express                  | tiny, ubiquitous |
-| Database | **`node:sqlite`** (built in)    | no native build step — `npm install` just works |
+| Server   | Node + Express                  | tiny, ubiquitous; exported for Vercel |
+| Database | **libSQL** (SQLite)             | local `fixit.db` file in dev, Turso in the cloud — same SQL |
 | Auth     | JWT in an httpOnly cookie + bcrypt | stateless, survives restarts |
-| Uploads  | multer → `./uploads`            | simple local image storage |
+| Uploads  | local disk in dev, **Vercel Blob** in prod | persists on serverless |
 | Frontend | one `index.html` + `app.js`     | extends the original FixIT prototype |
 
 ## Run it
@@ -70,18 +70,37 @@ Manager reviews ──approve──▶ open ──fixer accepts──▶ assigne
 ## Project layout
 
 ```
-server.js        Express app + all API routes + role guards
-db.js            node:sqlite schema, shared taxonomy, seed data
+server.js        Express app + all API routes (exported for Vercel)
+db.js            libSQL schema, shared taxonomy, seed data
+vercel.json      Vercel routing config
 public/
   index.html     UI (landing, auth, post flow, dashboards)
   app.js         SPA logic + API calls
-uploads/         problem photos (created at runtime)
+uploads/         local-dev image storage (Vercel Blob in production)
 ```
+
+## Deploy to Vercel
+
+The app runs on Vercel using **Turso (libSQL)** for the database and **Vercel Blob**
+for uploaded images (local dev still uses a `fixit.db` file + the `uploads/` folder —
+no setup needed).
+
+1. **Create a Turso database** at https://turso.tech → copy its **Database URL**
+   (`libsql://...`) and create an **auth token**.
+2. **Import this repo into Vercel** (New Project → pick the GitHub repo).
+3. In the project's **Storage** tab, create a **Blob** store and connect it
+   (this auto-adds `BLOB_READ_WRITE_TOKEN`).
+4. In **Settings → Environment Variables** add:
+   - `DATABASE_URL` = your Turso URL
+   - `DATABASE_AUTH_TOKEN` = your Turso token
+   - `JWT_SECRET` = a long random string
+5. **Deploy.** On first boot the schema is created and demo accounts are seeded.
+
+Config lives in `vercel.json` (routes everything to the Express app, which is
+exported from `server.js`).
 
 ## Notes for going to production
 
-This is a complete, runnable demo. Before a real launch you'd want:
-real email/SMS notifications, payment handling, image storage on a CDN/S3,
-HTTPS + a stronger `JWT_SECRET` (set the `JWT_SECRET` env var), rate limiting,
-and tests. The data model and flow above are production-shaped and won't need
-to change much.
+Already handled: hosted DB, blob image storage, simulated payments, a strong
+`JWT_SECRET` via env var. Still worth adding before a real launch: real
+email/SMS notifications, actual payment processing, rate limiting, and tests.
