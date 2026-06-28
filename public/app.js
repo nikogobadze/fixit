@@ -8,6 +8,7 @@ const state = { user: null, cats: [], dashTab: null, peopleFilter: 'all' };
    (no "logged out then in" flash). The JWT itself stays in the httpOnly cookie. */
 function setAuth(user) {
   state.user = user;
+  state.dashTab = null;   // reset dashboard tab so each role opens on its default (admin → People)
   try { user ? localStorage.setItem('fixit_user', JSON.stringify(user)) : localStorage.removeItem('fixit_user'); } catch {}
   renderNav();
 }
