@@ -106,7 +106,13 @@ function go(view, hash, push = true) {
 
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-go]');
-  if (t) { e.preventDefault(); go(t.getAttribute('data-go'), t.getAttribute('data-hash')); }
+  if (t) { e.preventDefault(); $('#mobile-menu')?.classList.remove('open'); go(t.getAttribute('data-go'), t.getAttribute('data-hash')); }
+});
+
+/* mobile hamburger menu */
+$('#nav-toggle')?.addEventListener('click', () => {
+  const m = $('#mobile-menu'); const open = m.classList.toggle('open');
+  $('#nav-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
 });
 
 /* Back / Forward buttons: restore the view from history without re-pushing. */
@@ -116,24 +122,27 @@ window.addEventListener('popstate', e => {
   go(view, hash, false);
 });
 
-/* ---------- nav bar (auth aware) ---------- */
+/* ---------- nav bar (auth aware) — fills both the desktop bar and the mobile menu ---------- */
 function renderNav() {
-  const el = $('#nav-cta'); const u = state.user;
+  const u = state.user;
+  let html;
   if (!u) {
-    el.innerHTML = `
+    html = `
       <a class="btn btn-ghost" data-go="registerClient" style="padding:.54rem 1.1rem .66rem">Sign up</a>
       <button class="btn btn-primary" data-go="login" style="padding:.54rem 1.2rem .66rem">Log in</button>`;
-    return;
+  } else {
+    const first = esc(u.name.split(' ')[0]);
+    html = `
+      <a class="who" data-go="profile" title="Your profile">${avatarHTML(u.name, u.avatar, 32)} ${first} <span class="role-tag">${u.role}</span></a>
+      <a class="btn btn-ghost btn-sm" data-go="dashboard">Dashboard</a>
+      <button class="btn btn-soft btn-sm js-logout">Log out</button>`;
   }
-  const first = esc(u.name.split(' ')[0]);
-  el.innerHTML = `
-    <a class="who" data-go="profile" title="Your profile">${avatarHTML(u.name, u.avatar, 32)} ${first} <span class="role-tag">${u.role}</span></a>
-    <a class="btn btn-ghost btn-sm" data-go="dashboard">Dashboard</a>
-    <button class="btn btn-soft btn-sm" id="logout-btn">Log out</button>`;
-  $('#logout-btn').onclick = async () => {
+  $('#nav-cta').innerHTML = html;
+  const ma = $('#mobile-auth'); if (ma) ma.innerHTML = html;
+  $$('.js-logout').forEach(b => b.onclick = async () => {
     await api('/api/auth/logout', { method: 'POST' });
-    state.user = null; renderNav(); toast('Logged out.'); go('home');
-  };
+    state.user = null; renderNav(); $('#mobile-menu')?.classList.remove('open'); toast('Logged out.'); go('home');
+  });
 }
 
 /* ---------- bootstrap taxonomy + chips ---------- */
@@ -808,7 +817,7 @@ function adminPeople(users) {
     let control = '<span style="color:var(--muted);font-size:.85rem">—</span>';
     if (u.is_primary) control = '<span style="color:var(--muted);font-size:.85rem">primary admin</span>';
     else if (u.id === state.user.id) control = '<span style="color:var(--muted);font-size:.85rem">(you)</span>';
-    else if (canChange) control = `<select class="input" data-uid="${u.id}" style="padding:.34rem 2rem .46rem .7rem;width:auto;font-size:.85rem">
+    else if (canChange) control = `<select class="input" data-uid="${u.id}" data-current="${u.role}" data-name="${esc(u.name)}" style="padding:.34rem 2rem .46rem .7rem;width:auto;font-size:.85rem">
         ${['fixer','manager','admin'].map(r => `<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}
       </select>`;
     const rating = (u.role === 'fixer' && u.rating && u.rating.count)
@@ -839,14 +848,29 @@ function adminPeople(users) {
       <tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:1.5rem">No one with that role.</td></tr>`}</tbody></table>`;
 }
 function wireRoleSelects() {
-  $$('#dash-root select[data-uid]').forEach(sel => sel.onchange = async () => {
-    try {
-      await api(`/api/admin/users/${sel.getAttribute('data-uid')}/role`, { body: { role: sel.value } });
-      toast('Role updated.'); renderDashboard();
-    } catch (err) { toast(err.message, true); renderDashboard(); }
+  $$('#dash-root select[data-uid]').forEach(sel => sel.onchange = () => {
+    const id = sel.getAttribute('data-uid');
+    const cur = sel.getAttribute('data-current');
+    const next = sel.value;
+    sel.value = cur;              // revert the dropdown — only apply after confirming
+    if (next === cur) return;
+    confirmRole(id, sel.getAttribute('data-name'), next);
   });
   const pf = $('#people-filter');
   if (pf) pf.onchange = () => { state.peopleFilter = pf.value; renderDashboard(); };
+}
+function confirmRole(id, name, newRole) {
+  modal(`
+    <h3>Change this person's role?</h3>
+    <p class="sub">Make <b>${esc(name)}</b> a <b>${esc(newRole)}</b>? You can change it back anytime.</p>
+    <div class="flow-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" type="button" id="role-yes">Yes, change it</button>
+    </div>`);
+  $('#role-yes').onclick = async () => {
+    try { await api(`/api/admin/users/${id}/role`, { body: { role: newRole } }); closeModal(); toast('Role updated.'); renderDashboard(); }
+    catch (err) { closeModal(); toast(err.message, true); renderDashboard(); }
+  };
 }
 
 /* ---------- shared ---------- */

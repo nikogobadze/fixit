@@ -58,6 +58,9 @@
   .nav-links{position:absolute;left:29%;transform:translateX(-50%);display:flex;align-items:center;gap:1.6rem;font-weight:500;font-size:.95rem;color:var(--muted)}
   .nav-links a{transition:color .15s;cursor:pointer}
   .nav-links a:hover{color:var(--ink)}
+  .nav-toggle{display:none;background:none;border:none;cursor:pointer;color:var(--ink);padding:.35rem;border-radius:8px;align-items:center;justify-content:center}
+  .nav-toggle svg{width:26px;height:26px}
+  .mobile-menu{display:none}
   .nav-cta{display:flex;align-items:center;gap:.7rem;margin-left:auto}
   .who{display:flex;align-items:center;gap:.6rem;font-size:.9rem;font-weight:600;cursor:pointer;transition:opacity .15s}
   .who:hover{opacity:.7}
@@ -175,10 +178,10 @@
   .page ul{margin:0 0 1.2rem 0;list-style:none;display:flex;flex-direction:column;gap:.7rem;max-width:68ch}
   .page li{display:flex;gap:.6rem;align-items:flex-start;color:var(--ink);line-height:1.6}
   .page li svg{width:20px;height:20px;color:var(--violet);flex-shrink:0;margin-top:.15rem}
-  .contact-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin:1.5rem 0 2rem}
-  .contact-card{background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--r);padding:1.3rem}
+  .contact-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem;margin:1.2rem 0 1.8rem}
+  .contact-card{background:var(--bg-soft);border:1px solid var(--line);border-radius:var(--r-sm);padding:.8rem .95rem}
   .contact-card .lab{font-family:'Space Mono';font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-  .contact-card a,.contact-card span{display:block;font-weight:700;font-size:1.05rem;margin-top:.3rem;color:var(--ink)}
+  .contact-card a,.contact-card span{display:block;font-weight:700;font-size:.92rem;margin-top:.2rem;color:var(--ink)}
   .contact-card a:hover{color:var(--violet)}
   /* flow pages */
   .flow{padding:1.75rem 0 5rem;min-height:70vh}
@@ -342,7 +345,7 @@
   .stars-ro{letter-spacing:.04em;font-size:1rem}
   .star-ro{color:var(--silver)}
   .star-ro.on{color:#F5B301}
-  .rating-avg{color:#E0A800;font-weight:700}
+  .rating-avg{color:#F5B301;font-weight:700}
   /* reviews page */
   #view-reviews .page-body{max-width:1040px}
   .reviews-head{text-align:center;margin-bottom:2rem}
@@ -350,8 +353,8 @@
   .reviews-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem}
   .review-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:1.3rem;display:flex;flex-direction:column;gap:.6rem}
   .review-text{font-size:.98rem;line-height:1.6;color:var(--ink)}
-  .review-top{display:flex;align-items:center;gap:.65rem}
-  .review-top .stars-ro{margin-left:auto;flex-shrink:0}
+  .review-top{display:flex;align-items:flex-start;gap:.65rem}
+  .review-top .stars-ro{margin-left:auto;flex-shrink:0;font-size:1.25rem;line-height:1;margin-top:1px}
   .review-who{display:flex;flex-direction:column;line-height:1.3;min-width:0}
   .review-who b{font-size:.92rem;color:var(--ink)}
   .review-sub{font-size:.82rem;color:var(--muted)}
@@ -394,6 +397,8 @@
   .people-filter{display:inline-flex;align-items:center;gap:.5rem;font-size:.85rem;font-weight:600;color:var(--muted)}
   .people-filter select{width:auto;padding:.4rem 2.2rem .52rem .8rem;font-size:.88rem;color:var(--ink)}
   table.users tr:last-child td{border-bottom:none}
+  /* keep Qualifications narrow so Name/Email/etc get more room */
+  table.users th:nth-child(5),table.users td:nth-child(5){width:430px;white-space:normal;word-break:break-word}
   .role-chip{font-family:'Space Mono';font-size:.72rem;text-transform:uppercase;padding:.18rem .55rem;border-radius:var(--r-pill);font-weight:700}
   .rc-admin{background:#1B1525;color:#fff}
   .rc-manager{background:var(--violet-soft);color:var(--violet-deep)}
@@ -430,6 +435,37 @@
     .cats{grid-template-columns:1fr 1fr}.fixer-band{grid-template-columns:1fr;padding:2.2rem}
     .two{grid-template-columns:1fr}.foot-grid{flex-direction:column}
     table.users{display:block;overflow-x:auto;white-space:nowrap}
+    /* mobile nav: replace desktop links + auth with a hamburger menu */
+    .nav-toggle{display:inline-flex}
+    .nav-cta{display:none}
+    .mobile-menu.open{display:flex;flex-direction:column;gap:.15rem;padding:.4rem 4vw 1.1rem;background:#fff;border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+    .mobile-menu a{padding:.85rem .2rem;font-weight:600;font-size:1.02rem;color:var(--ink);border-bottom:1px solid var(--line)}
+    .mobile-auth{display:flex;flex-direction:column;gap:.6rem;margin-top:.9rem}
+    .mobile-auth .btn{width:100%;justify-content:center;font-size:1rem;padding:.8rem 1rem}
+    .mobile-auth .who{justify-content:center;padding:.2rem 0 .4rem;font-size:1rem}
+  }
+  /* phones */
+  @media(max-width:560px){
+    .grid,.reviews-grid{grid-template-columns:1fr}
+    .cats{grid-template-columns:1fr}
+    .hero{padding:1.6rem 0 3rem}
+    .section{padding:3rem 0}
+    .hero h1{font-size:2.15rem}
+    .hero p.lede{font-size:1.05rem;max-width:none}
+    .float-tag{display:none}            /* declutter the preview card */
+    .hero-cta{width:100%}
+    .hero-cta .btn{flex:1 1 auto;justify-content:center}
+    .sec-head h2{font-size:1.7rem}
+    .fixer-band{padding:1.8rem}
+    .dash-head h1{font-size:1.6rem}
+    .flow-title,.page-title{font-size:1.5rem}
+    .dash{padding:1.6rem 0 4rem}
+    .contact-cards{grid-template-columns:1fr 1fr}
+    .modal{padding:1.4rem}
+  }
+  @media(max-width:380px){
+    .contact-cards{grid-template-columns:1fr}
+    .hero h1{font-size:1.95rem}
   }
   @media(max-width:600px){#view-registerClient .back,#view-registerFixer .back,#view-post .back,#view-login .back,#view-about .back,#view-profile .back{position:static}#view-registerClient .flow-card,#view-registerFixer .flow-card,#view-post .flow-card,#view-login .flow-card,#view-profile .flow-card{margin-top:1.5rem}#view-about .page-body{margin-top:1.5rem}}
   @media(max-width:480px){.cats{grid-template-columns:1fr}.flow-card{padding:1.5rem}.plabel{display:none}}
@@ -452,6 +488,16 @@
       <a data-go="about">About</a>
     </nav>
     <div class="nav-cta" id="nav-cta"><!-- filled by app.js --></div>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobile-menu">
+    <a data-go="home" data-hash="how">How it works</a>
+    <a data-go="home" data-hash="cats">Common Problems</a>
+    <a data-go="reviews">Reviews</a>
+    <a data-go="about">About</a>
+    <div class="mobile-auth" id="mobile-auth"><!-- filled by app.js --></div>
   </div>
 </header>
 
