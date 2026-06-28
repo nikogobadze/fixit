@@ -491,12 +491,12 @@ document.addEventListener('click', async e => {
     if (action === 'accept-counter') { await api(`/api/tasks/${id}/respond`, { body:{ action:'accept' } }); toast('Price accepted — sent to fixers.'); }
     if (action === 'decline-counter') { await api(`/api/tasks/${id}/respond`, { body:{ action:'decline' } }); toast('Price declined.'); }
     if (action === 'confirm-done') { await api(`/api/tasks/${id}/confirm`, { method:'POST' }); toast('Marked as fixed. Thank you!'); }
-    if (action === 'accept-task') { await api(`/api/tasks/${id}/accept`, { method:'POST' }); toast('Job is yours — good luck!'); }
+    if (action === 'accept-task') { return confirmAccept(id); }
     if (action === 'mark-done') { await api(`/api/tasks/${id}/done`, { method:'POST' }); toast('Marked done. Waiting for client to confirm.'); }
     if (action === 'cancel-task') { return confirmCancel(id); }
     if (action === 'pay') { return openPay(id, +a.getAttribute('data-amount')); }
     if (action === 'review') { return openReview(id); }
-    if (['accept-counter','decline-counter','confirm-done','accept-task','mark-done'].includes(action)) renderDashboard();
+    if (['accept-counter','decline-counter','confirm-done','mark-done'].includes(action)) renderDashboard();
   } catch (err) { toast(err.message, true); renderDashboard(); }
 });
 
@@ -754,6 +754,19 @@ async function doPay(e, id) {
   }
 }
 
+function confirmAccept(id) {
+  modal(`
+    <h3>Take this job?</h3>
+    <p class="sub">Only accept if you're confident you can complete it. Once you accept, it's assigned to you and removed from other fixers.</p>
+    <div class="flow-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal()">Not now</button>
+      <button class="btn btn-primary" type="button" id="accept-yes">Yes, I'll take it</button>
+    </div>`);
+  $('#accept-yes').onclick = async () => {
+    try { await api(`/api/tasks/${id}/accept`, { method: 'POST' }); closeModal(); toast('Job is yours — good luck!'); renderDashboard(); }
+    catch (err) { closeModal(); toast(err.message, true); renderDashboard(); }
+  };
+}
 function confirmCancel(id) {
   modal(`
     <h3>Cancel this request?</h3>
