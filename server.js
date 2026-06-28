@@ -30,9 +30,10 @@ const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch
 app.use(ah(async (req, res, next) => { await ready(); next(); }));
 
 /* ---------- uploads (Vercel Blob in prod, local disk in dev) ---------- */
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
-if (!useBlob) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// On Vercel the project dir is read-only; only /tmp is writable. Locally use ./uploads.
+const UPLOAD_DIR = process.env.VERCEL ? path.join(require('os').tmpdir(), 'uploads') : path.join(__dirname, 'uploads');
+if (!useBlob) { try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch {} }
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB
@@ -45,6 +46,7 @@ async function saveUpload(file) {
     const blob = await put(`uploads/${name}`, file.buffer, { access: 'public', contentType: file.mimetype });
     return blob.url; // full https URL
   }
+  try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch {}
   fs.writeFileSync(path.join(UPLOAD_DIR, name), file.buffer);
   return name; // filename, served from /uploads
 }

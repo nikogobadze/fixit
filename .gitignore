@@ -9,3 +9,6 @@ server.log
 
 backups/
 .vercel
+
+.vercel
+.env*
