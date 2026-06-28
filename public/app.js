@@ -761,11 +761,11 @@ async function doPay(e, id) {
 
 function confirmRelease(id) {
   modal(`
-    <h3>Release this task?</h3>
+    <h3>Reassign this task?</h3>
     <p class="sub">This unassigns the current fixer and puts the job back to “Open to fixers”, so another fixer can take it.</p>
     <div class="flow-actions">
       <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" type="button" id="release-yes">Release it</button>
+      <button class="btn btn-primary" type="button" id="release-yes">Okay</button>
     </div>`);
   $('#release-yes').onclick = async () => {
     try { await api(`/api/tasks/${id}/release`, { method: 'POST' }); closeModal(); toast('Task released — open to fixers again.'); renderDashboard(); }
