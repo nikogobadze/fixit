@@ -491,7 +491,7 @@ document.addEventListener('click', async e => {
 async function renderDashboard(silent = false) {
   const u = state.user; if (!u) return go('login');
   const root = $('#dash-root');
-  if (!silent) root.innerHTML = `<div class="empty">Loading…</div>`;
+  if (!silent) root.innerHTML = loadingBox();
   if (u.role === 'client') return renderClient(root);
   if (u.role === 'fixer') return renderFixer(root);
   if (u.role === 'manager') return renderManager(root);
@@ -515,6 +515,7 @@ setInterval(() => {
 const emptyBox = (msg) => `<div class="empty">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6M9 16h6M9 8h6"/><rect x="4" y="3" width="16" height="18" rx="2"/></svg>
   <div>${msg}</div></div>`;
+const loadingBox = (msg = 'Loading…') => `<div class="loading"><span class="spin"></span>${msg}</div>`;
 
 /* ---------- CLIENT ---------- */
 async function renderClient(root) {
@@ -887,7 +888,7 @@ function fmtDate(s) {
 }
 async function renderReviews() {
   const root = $('#reviews-root');
-  root.innerHTML = `<div class="empty">Loading…</div>`;
+  root.innerHTML = loadingBox();
   let data;
   try { data = await api('/api/reviews'); } catch { root.innerHTML = emptyBox('Could not load reviews.'); return; }
   const { reviews, summary } = data;

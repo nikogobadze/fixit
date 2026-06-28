@@ -386,6 +386,9 @@
   .toggle-ev{font-size:.82rem;color:var(--violet-deep);font-weight:600;cursor:pointer;width:max-content}
   .empty{text-align:center;color:var(--muted);padding:3rem 1rem;border:2px dashed var(--line);border-radius:var(--r);background:var(--bg-soft)}
   .empty svg{width:40px;height:40px;color:var(--silver);margin:0 auto 1rem}
+  .loading{display:flex;align-items:center;justify-content:center;gap:.6rem;padding:2rem 1rem;color:var(--muted);font-weight:600;font-size:.92rem}
+  .loading .spin{width:18px;height:18px;border:2.5px solid var(--violet-100);border-top-color:var(--violet);border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
   .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.7rem;margin-bottom:1.4rem}
   .stat{background:#fff;border:1px solid var(--line);border-radius:var(--r-sm);padding:.6rem .85rem}
   .stat .n{font-family:'Bricolage Grotesque';font-weight:800;font-size:1.3rem;line-height:1.1}
