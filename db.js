@@ -11,6 +11,7 @@ const bcrypt = require('bcryptjs');
 const url = process.env.DATABASE_URL || 'file:fixit.db';
 const authToken = process.env.DATABASE_AUTH_TOKEN || undefined;
 const db = createClient(authToken ? { url, authToken } : { url });
+const isRemote = /^(libsql|https?|wss?):/i.test(url); // Turso (prod) vs local file
 
 /* tiny async query helpers (positional ? args, same as before) */
 async function run(sql, args = []) { return db.execute({ sql, args }); }
@@ -131,13 +132,16 @@ async function seed() {
 let initPromise = null;
 async function init() {
   await db.executeMultiple(SCHEMA);
-  // Migrations for databases that predate newer columns.
-  const t = await columns('tasks');
-  const addsT = { custom_category: 'TEXT', paid: 'INTEGER NOT NULL DEFAULT 0', paid_at: 'TEXT',
-    card_last4: 'TEXT', rating: 'INTEGER', rating_comment: 'TEXT', rated_at: 'TEXT' };
-  for (const [c, def] of Object.entries(addsT)) if (!t.includes(c)) await db.execute(`ALTER TABLE tasks ADD COLUMN ${c} ${def}`);
-  const u = await columns('users');
-  if (!u.includes('avatar')) await db.execute(`ALTER TABLE users ADD COLUMN avatar TEXT`);
+  // Column migrations only matter for older LOCAL files; a remote (Turso) DB is
+  // always created fresh with the full schema, so skip the extra round-trips.
+  if (!isRemote) {
+    const t = await columns('tasks');
+    const addsT = { custom_category: 'TEXT', paid: 'INTEGER NOT NULL DEFAULT 0', paid_at: 'TEXT',
+      card_last4: 'TEXT', rating: 'INTEGER', rating_comment: 'TEXT', rated_at: 'TEXT' };
+    for (const [c, def] of Object.entries(addsT)) if (!t.includes(c)) await db.execute(`ALTER TABLE tasks ADD COLUMN ${c} ${def}`);
+    const u = await columns('users');
+    if (!u.includes('avatar')) await db.execute(`ALTER TABLE users ADD COLUMN avatar TEXT`);
+  }
   await seed();
 }
 /* ready resolves once the schema/seed are in place (idempotent, cached). */
