@@ -492,6 +492,7 @@ document.addEventListener('click', async e => {
     if (action === 'decline-counter') { await api(`/api/tasks/${id}/respond`, { body:{ action:'decline' } }); toast('Price declined.'); }
     if (action === 'confirm-done') { await api(`/api/tasks/${id}/confirm`, { method:'POST' }); toast('Marked as fixed. Thank you!'); }
     if (action === 'accept-task') { return confirmAccept(id); }
+    if (action === 'release') { return confirmRelease(id); }
     if (action === 'mark-done') { await api(`/api/tasks/${id}/done`, { method:'POST' }); toast('Marked done. Waiting for client to confirm.'); }
     if (action === 'cancel-task') { return confirmCancel(id); }
     if (action === 'pay') { return openPay(id, +a.getAttribute('data-amount')); }
@@ -627,9 +628,11 @@ function fixerMineCard(t) {
               : `<div class="meta"><span style="color:var(--warn)">Awaiting client payment</span></div>`) : '';
   const rateLine = (t.status === 'completed' && t.rating)
     ? `<div class="rated">Client rated you ${starsRO(t.rating)}${t.rating_comment ? ` — “${esc(t.rating_comment)}”` : ''}</div>` : '';
+  const cantHint = t.status === 'assigned'
+    ? `<div class="note-box">Can't complete it? Contact a manager to release it back to other fixers.</div>` : '';
   return cardShell(t, `${priceBlock(t)}
     <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span></div>
-    ${payLine}${rateLine}
+    ${payLine}${rateLine}${cantHint}
     ${actions ? `<div class="card-actions">${actions}</div>` : ''}`);
 }
 
@@ -684,9 +687,11 @@ function managerAllCard(t) {
               : `<div class="meta"><span style="color:var(--warn)">Awaiting client payment</span></div>`) : '';
   const rateLine = (t.status === 'completed' && t.rating)
     ? `<div class="rated">Rated ${starsRO(t.rating)}${t.rating_comment ? ` — “${esc(t.rating_comment)}”` : ''}</div>` : '';
+  const release = t.status === 'assigned'
+    ? `<div class="card-actions"><button class="btn btn-ghost btn-sm" data-action="release">Release / reassign</button></div>` : '';
   return cardShell(t, `${priceBlock(t)}${note}
     <div class="meta"><span>Client: <b>${esc(t.client.name)}</b></span>${t.fixer?`<span>Fixer: <b>${esc(t.fixer.name)}</b></span>`:''}</div>
-    ${payLine}${rateLine}`);
+    ${payLine}${rateLine}${release}`);
 }
 
 /* ---------- simulated payment ---------- */
@@ -754,6 +759,19 @@ async function doPay(e, id) {
   }
 }
 
+function confirmRelease(id) {
+  modal(`
+    <h3>Release this task?</h3>
+    <p class="sub">This unassigns the current fixer and puts the job back to “Open to fixers”, so another fixer can take it.</p>
+    <div class="flow-actions">
+      <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" type="button" id="release-yes">Release it</button>
+    </div>`);
+  $('#release-yes').onclick = async () => {
+    try { await api(`/api/tasks/${id}/release`, { method: 'POST' }); closeModal(); toast('Task released — open to fixers again.'); renderDashboard(); }
+    catch (err) { closeModal(); toast(err.message, true); renderDashboard(); }
+  };
+}
 function confirmAccept(id) {
   modal(`
     <h3>Take this job?</h3>

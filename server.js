@@ -392,6 +392,18 @@ app.post('/api/tasks/:id/review', auth, requireRole('manager', 'admin'), ah(asyn
   res.json({ task: await taskView(await taskById(t.id)) });
 }));
 
+// Manager/admin releases an assigned task back to "open" (e.g. the fixer can't
+// complete it). Fixers cannot do this themselves.
+app.post('/api/tasks/:id/release', auth, requireRole('manager', 'admin'), ah(async (req, res) => {
+  const t = await taskById(+req.params.id);
+  if (!t) return res.status(404).json({ error: 'Task not found.' });
+  if (t.status !== 'assigned') return res.status(400).json({ error: 'Only an in-progress task can be released.' });
+  const prev = t.assigned_fixer_id ? await userById(t.assigned_fixer_id) : null;
+  await run(`UPDATE tasks SET status='open', assigned_fixer_id=NULL, updated_at=datetime('now') WHERE id=?`, [t.id]);
+  await event(t.id, req.user.id, `${req.user.name} released the task${prev ? ` from ${prev.name}` : ''}. It's open to fixers again.`);
+  res.json({ task: await taskView(await taskById(t.id)) });
+}));
+
 /* ==================================================================
    FIXER
 ================================================================== */
