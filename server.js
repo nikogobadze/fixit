@@ -17,7 +17,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fixit-dev-secret-change-me';
 const COOKIE = 'fixit_token';
+const IS_PROD = !!process.env.VERCEL || process.env.NODE_ENV === 'production';
 
+app.set('trust proxy', 1); // behind Vercel's proxy
 app.use(express.json());
 app.use(cookieParser());
 
@@ -107,7 +109,7 @@ const viewAll = (rows) => Promise.all(rows.map(taskView));
 /* ---------- auth ---------- */
 function setAuthCookie(res, user) {
   const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-  res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 3600 * 1000 });
+  res.cookie(COOKIE, token, { httpOnly: true, sameSite: 'lax', secure: IS_PROD, maxAge: 7 * 24 * 3600 * 1000 });
 }
 async function currentUser(req) {
   const token = req.cookies[COOKIE];
@@ -210,7 +212,10 @@ app.post('/api/auth/login', ah(async (req, res) => {
   res.json({ user: await publicUser(u) });
 }));
 
-app.post('/api/auth/logout', (req, res) => { res.clearCookie(COOKIE); res.json({ ok: true }); });
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie(COOKIE, { httpOnly: true, sameSite: 'lax', secure: IS_PROD });
+  res.json({ ok: true });
+});
 
 app.get('/api/me', ah(async (req, res) => res.json({ user: await publicUser(await currentUser(req)) })));
 

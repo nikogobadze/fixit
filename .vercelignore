@@ -1,0 +1,8 @@
+node_modules
+fixit.db
+fixit.db-*
+uploads
+backups
+server.log
+.env
+.git
