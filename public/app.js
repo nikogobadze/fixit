@@ -4,6 +4,17 @@
 ================================================================== */
 const state = { user: null, cats: [], dashTab: null, peopleFilter: 'all' };
 
+/* Cache the logged-in user locally so a reload shows the right navbar instantly
+   (no "logged out then in" flash). The JWT itself stays in the httpOnly cookie. */
+function setAuth(user) {
+  state.user = user;
+  try { user ? localStorage.setItem('fixit_user', JSON.stringify(user)) : localStorage.removeItem('fixit_user'); } catch {}
+  renderNav();
+}
+function readAuthCache() {
+  try { return JSON.parse(localStorage.getItem('fixit_user') || 'null'); } catch { return null; }
+}
+
 /* ---------- tiny helpers ---------- */
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -141,7 +152,7 @@ function renderNav() {
   const ma = $('#mobile-auth'); if (ma) ma.innerHTML = html;
   $$('.js-logout').forEach(b => b.onclick = async () => {
     await api('/api/auth/logout', { method: 'POST' });
-    state.user = null; renderNav(); $('#mobile-menu')?.classList.remove('open'); toast('Logged out.'); go('home');
+    setAuth(null); $('#mobile-menu')?.classList.remove('open'); toast('Logged out.'); go('home');
   });
 }
 
@@ -245,7 +256,7 @@ $('#login-form').addEventListener('submit', async e => {
   if (!ok) return;
   try {
     const { user } = await api('/api/auth/login', { body: { email: f.email.value, password: f.password.value } });
-    state.user = user; renderNav(); f.reset();
+    setAuth(user); f.reset();
     toast(`Welcome back, ${user.name.split(' ')[0]}.`); go('dashboard');
   } catch (err) { fieldErr(f.password, err.message); }
 });
@@ -277,7 +288,7 @@ $('#rc-form').addEventListener('submit', async e => {
     fd.append('phone', f.phone.value); fd.append('password', f.password.value);
     if (regClientAvatar) fd.append('avatar', regClientAvatar);
     const { user } = await api('/api/auth/register/client', { form: fd });
-    state.user = user; renderNav(); f.reset(); regClientAvatar = null;
+    setAuth(user); f.reset(); regClientAvatar = null;
     toast('Account created. Let\'s fix something.'); go('post');
   } catch (err) { fieldErr(f.email, err.message); }
 });
@@ -325,7 +336,7 @@ $('#rf-form').addEventListener('submit', async e => {
     fd.append('skills', JSON.stringify(skills)); fd.append('custom_skills', JSON.stringify(custom_skills));
     if (regFixerAvatar) fd.append('avatar', regFixerAvatar);
     const { user } = await api('/api/auth/register/fixer', { form: fd });
-    state.user = user; renderNav(); f.reset(); regFixerAvatar = null;
+    setAuth(user); f.reset(); regFixerAvatar = null;
     $$('#skill-chips .chip').forEach(c => c.classList.remove('on')); goFixerStep(1);
     toast('Welcome aboard, fixer!'); go('dashboard');
   } catch (err) {
@@ -968,7 +979,7 @@ function renderProfile() {
   $('#profile-form').addEventListener('submit', saveProfile);
   wireAvatarPicker('pf', async file => {
     const fd = new FormData(); fd.append('avatar', file);
-    try { const { user } = await api('/api/profile/avatar', { form: fd }); state.user = user; renderNav(); toast('Photo updated.'); }
+    try { const { user } = await api('/api/profile/avatar', { form: fd }); setAuth(user); toast('Photo updated.'); }
     catch (err) { toast(err.message, true); }
   });
 }
@@ -997,7 +1008,7 @@ async function saveProfile(e) {
   if (!ok) return;
   try {
     const { user } = await api('/api/profile', { body });
-    state.user = user; renderNav(); renderProfile();
+    setAuth(user); renderProfile();
     toast('Profile updated.');
   } catch (err) {
     if (/email/i.test(err.message)) fieldErr(f.email, err.message);
@@ -1010,10 +1021,11 @@ async function saveProfile(e) {
    BOOT
 ================================================================== */
 (async function init() {
-  renderNav();                       // show Sign up / Log in instantly (no empty navbar)
-  // Fetch login status + categories in parallel (not one-after-another).
+  state.user = readAuthCache();      // instantly restore the last-known login (no flash)
+  renderNav();
+  // Confirm with the server + load categories in parallel.
   const cats = loadCategories();
-  const me = api('/api/me').then(r => { state.user = r.user; renderNav(); }).catch(() => {});
+  const me = api('/api/me').then(r => setAuth(r.user)).catch(() => {});
   await Promise.allSettled([cats, me]);
   // Open the view that matches the current URL (deep link / refresh / first load).
   const initialView = VIEW_BY_PATH[location.pathname] || 'home';
