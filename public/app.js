@@ -1010,9 +1010,9 @@ async function saveProfile(e) {
    BOOT
 ================================================================== */
 (async function init() {
+  renderNav();                       // show Sign up / Log in instantly (no empty navbar)
+  try { const { user } = await api('/api/me'); state.user = user; renderNav(); } catch {}
   await loadCategories();
-  try { const { user } = await api('/api/me'); state.user = user; } catch {}
-  renderNav();
   // Open the view that matches the current URL (deep link / refresh / first load).
   const initialView = VIEW_BY_PATH[location.pathname] || 'home';
   const initialHash = location.hash ? location.hash.slice(1) : null;
