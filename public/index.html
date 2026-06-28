@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FixIT — Behind every glitch, there's someone who can fix it</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="apple-touch-icon" href="/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -54,6 +56,7 @@
   .logo{display:flex;align-items:center;gap:.55rem;font-family:'Bricolage Grotesque';font-weight:800;font-size:1.32rem;letter-spacing:-.03em;cursor:pointer}
   .logo .mark{width:34px;height:34px;border-radius:10px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(124,58,237,.4)}
   .logo .mark svg{width:26px;height:26px;display:block;transform:translate(0.5px,-0.5px)}
+  .logo .mark-img{width:42px;height:42px;object-fit:contain;flex-shrink:0}
   .logo b{color:var(--violet)}
   .nav-links{position:absolute;left:29%;transform:translateX(-50%);display:flex;align-items:center;gap:1.6rem;font-weight:500;font-size:.95rem;color:var(--muted)}
   .nav-links a{transition:color .15s;cursor:pointer}
@@ -481,7 +484,7 @@
 <header class="nav">
   <div class="wrap nav-inner">
     <a class="logo" data-go="home" aria-label="FixIT home">
-      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-6 6a1.4 1.4 0 0 0 2 2l6-6a4 4 0 0 0 5.4-5.4l-2.3 2.3-2-2 2.3-2.3z"/></svg></span>
+      <img class="mark-img" src="/logo.png" alt="" aria-hidden="true">
       <span>Fix<b>IT</b></span>
     </a>
     <nav class="nav-links" aria-label="Primary">
@@ -883,7 +886,7 @@
   <div class="wrap">
     <div class="foot-grid">
       <div>
-        <a class="logo" data-go="home"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-6 6a1.4 1.4 0 0 0 2 2l6-6a4 4 0 0 0 5.4-5.4l-2.3 2.3-2-2 2.3-2.3z"/></svg></span> <span>Fix<b>IT</b></span></a>
+        <a class="logo" data-go="home"><img class="mark-img" src="/logo.png" alt="" aria-hidden="true"> <span>Fix<b>IT</b></span></a>
         <p>The simplest way to get a real IT problem solved by a real person.</p>
       </div>
       <div class="foot-links">
